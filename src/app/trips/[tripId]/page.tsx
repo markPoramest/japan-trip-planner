@@ -14,10 +14,6 @@ export default async function TripOverviewPage({ params }: Props) {
   const session = await getAuthSession();
   const userId = (session?.user as any)?.id;
 
-  if (!userId) {
-    redirect("/login");
-  }
-
   const trip = await db.trip.findUnique({
     where: { id: params.tripId },
     include: {
@@ -33,7 +29,14 @@ export default async function TripOverviewPage({ params }: Props) {
   });
 
   if (!trip) notFound();
-  if (trip.userId && trip.userId !== userId) notFound();
+
+  const isOwner = !trip.userId || (userId && trip.userId === userId);
+  if (!trip.isPublic && !isOwner) {
+    if (!userId) {
+      redirect(`/login?callbackUrl=/trips/${params.tripId}`);
+    }
+    notFound();
+  }
 
   const allActivities = trip.days.flatMap((d) => d.activities);
   const totalActivitiesCostJpy = allActivities.reduce((s, a) => s + (a.cost || 0), 0);
@@ -52,6 +55,8 @@ export default async function TripOverviewPage({ params }: Props) {
     startDate: trip.startDate.toISOString(),
     endDate: trip.endDate.toISOString(),
     exchangeRate: trip.exchangeRate,
+    isPublic: trip.isPublic,
+    isOwner: !!isOwner,
     totalActivitiesCostJpy,
     totalIcSpendJpy,
     totalNonIcSpendJpy,
@@ -69,7 +74,7 @@ export default async function TripOverviewPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-bg-base pb-16">
       <Navbar tripId={trip.id} currentSection="overview" />
-      <TripOverviewClient trip={tripData} />
+      <TripOverviewClient trip={tripData} isOwner={!!isOwner} />
     </div>
   );
 }

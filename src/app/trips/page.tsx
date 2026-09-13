@@ -24,6 +24,7 @@ export default async function TripsPage() {
     include: {
       days: {
         include: { activities: true },
+        orderBy: { dayNumber: "asc" },
       },
       hotels: true,
       passes: true,
@@ -37,6 +38,7 @@ export default async function TripsPage() {
     const totalActivitiesJpy = allActivities.reduce((s, a) => s + (a.cost || 0), 0);
     const totalPassJpy = trip.passes.reduce((s, p) => s + (p.costJpy || 0), 0);
     const totalHotelThb = trip.hotels.reduce((s, h) => s + (h.costThb || 0), 0);
+    const totalHotelJpy = trip.hotels.reduce((s, h) => s + (h.costJpy || (h.costThb ? h.costThb / trip.exchangeRate : 0)), 0);
     const totalFlightThb = trip.flights.reduce((s, f) => s + (f.costThb || 0), 0);
 
     const grandTotalThb =
@@ -51,13 +53,33 @@ export default async function TripsPage() {
       startDate: trip.startDate.toISOString(),
       endDate: trip.endDate.toISOString(),
       exchangeRate: trip.exchangeRate,
+      isPublic: trip.isPublic !== false,
       totalActivitiesJpy,
       totalPassJpy,
       totalHotelThb,
+      totalHotelJpy,
       totalFlightThb,
       grandTotalThb,
       daysCount: trip.days.length,
       activitiesCount: allActivities.length,
+      days: trip.days.map((d) => {
+        const dayCostJpy = d.activities.reduce((s, a) => s + (a.cost || 0), 0);
+        return {
+          id: d.id,
+          dayNumber: d.dayNumber,
+          title: d.title,
+          dayCostJpy,
+          activities: d.activities.map((a) => ({
+            id: a.id,
+            location: a.location,
+            activity: a.activity,
+            cost: a.cost,
+          })),
+        };
+      }),
+      hotels: trip.hotels,
+      passes: trip.passes,
+      flights: trip.flights,
     };
   });
 

@@ -14,8 +14,6 @@ export default async function BookingsPage({ params }: Props) {
   const session = await getAuthSession();
   const userId = (session?.user as any)?.id;
 
-  if (!userId) redirect("/login");
-
   const trip = await db.trip.findUnique({
     where: { id: params.tripId },
     include: {
@@ -28,7 +26,12 @@ export default async function BookingsPage({ params }: Props) {
   });
 
   if (!trip) notFound();
-  if (trip.userId && trip.userId !== userId) notFound();
+
+  const isOwner = !trip.userId || (userId && trip.userId === userId);
+  if (!trip.isPublic && !isOwner) {
+    if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/bookings`);
+    notFound();
+  }
 
   const allActivities = trip.days.flatMap((d) => d.activities);
   const totalIcSpendJpy = allActivities.filter((a) => a.isIcCard).reduce((s, a) => s + (a.cost || 0), 0);
@@ -38,7 +41,10 @@ export default async function BookingsPage({ params }: Props) {
     <div className="min-h-screen bg-bg-base pb-16">
       <Navbar tripId={trip.id} currentSection="bookings" />
       <BookingsClient
-        trip={trip}
+        trip={{
+          ...trip,
+          id: isOwner ? trip.id : "",
+        }}
         totalIcSpendJpy={totalIcSpendJpy}
         totalNonIcSpendJpy={totalNonIcSpendJpy}
       />

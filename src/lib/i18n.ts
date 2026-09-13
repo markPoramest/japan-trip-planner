@@ -213,6 +213,26 @@ export const translations = {
     locationCol: "Location / Destination",
     activityCol: "Planned Activity / Transit Route",
     passCol: "Pass / Ticket / Note",
+
+    // Share & Instagram Story
+    shareTrip: "Share Trip",
+    shareModalTitle: "Share Trip & Instagram Story",
+    tripVisibility: "Trip Privacy & Access",
+    publicTrip: "Public (Anyone with link can view)",
+    privateTrip: "Private (Only you)",
+    publicDesc: "Anyone with the link can view your daily itinerary & bookings (Read-only).",
+    privateDesc: "Only you can access and view this trip.",
+    copyLink: "Copy Link",
+    linkCopied: "Link Copied!",
+    shareStoryTitle: "Instagram Story Generator (9:16)",
+    shareStorySubtitle: "Generate a sleek summary card ready to paste or post to your Instagram Story",
+    copyStoryImage: "Copy Story to Clipboard",
+    storyCopied: "Story Copied! Open IG & Paste",
+    downloadStory: "Download Story Image",
+    copySummaryText: "Copy Text Summary",
+    summaryCopied: "Summary Copied!",
+    generatingStory: "Generating Story...",
+    shareVia: "Share via...",
   },
   th: {
     // Brand & Header
@@ -426,6 +446,26 @@ export const translations = {
     locationCol: "สถานที่ / จุดหมาย",
     activityCol: "กิจกรรม / เส้นทางเดินทาง",
     passCol: "พาส / ตั๋ว / รถเช่า / หมายเหตุ",
+
+    // Share & Instagram Story
+    shareTrip: "แชร์ทริป",
+    shareModalTitle: "แชร์ทริป & สตอรี่ Instagram",
+    tripVisibility: "การมองเห็นและการเข้าถึง",
+    publicTrip: "สาธารณะ (ทุกคนที่มีลิงก์เข้าดูได้)",
+    privateTrip: "ส่วนตัว (เฉพาะคุณเท่านั้น)",
+    publicDesc: "ทุกคนที่มีลิงก์สามารถดูแผนการเดินทาง วัน และการจองได้ (อ่านอย่างเดียว)",
+    privateDesc: "เฉพาะคุณเท่านั้นที่สามารถเข้าถึงและดูทริปนี้ได้",
+    copyLink: "คัดลอกลิงก์",
+    linkCopied: "คัดลอกลิงก์แล้ว!",
+    shareStoryTitle: "สร้างรูปสตอรี่ Instagram (9:16)",
+    shareStorySubtitle: "สร้างการ์ดสรุปทริปขนาด 9:16 พร้อมแชร์ลงสตอรี่ไอจีได้ทันที",
+    copyStoryImage: "คัดลอกรูปสตอรี่",
+    storyCopied: "คัดลอกรูปแล้ว! เปิด IG แล้ววางได้เลย",
+    downloadStory: "ดาวน์โหลดรูปสตอรี่",
+    copySummaryText: "คัดลอกข้อความสรุป",
+    summaryCopied: "คัดลอกข้อความสรุปแล้ว!",
+    generatingStory: "กำลังสร้างรูปภาพ...",
+    shareVia: "แชร์ไปยัง...",
   },
 } as const;
 

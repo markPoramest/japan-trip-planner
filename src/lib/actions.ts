@@ -226,6 +226,26 @@ export async function updateTrip(tripId: string, data: {
   return updated;
 }
 
+export async function updateTripVisibility(tripId: string, isPublic: boolean) {
+  const session = await getAuthSession();
+  const userId = (session?.user as any)?.id;
+
+  const trip = await db.trip.findUnique({ where: { id: tripId }, select: { userId: true } });
+  if (!trip) throw new Error("Trip not found");
+  if (trip.userId && userId && trip.userId !== userId) {
+    throw new Error("Unauthorized");
+  }
+
+  const updated = await db.trip.update({
+    where: { id: tripId },
+    data: { isPublic },
+  });
+
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath("/trips");
+  return updated;
+}
+
 export async function updateTripDay(
   dayId: string,
   tripId: string,

@@ -16,8 +16,6 @@ export default async function DayPage({ params }: Props) {
   const session = await getAuthSession();
   const userId = (session?.user as any)?.id;
 
-  if (!userId) redirect("/login");
-
   const day = await db.tripDay.findFirst({
     where: { slug: params.slug, tripId: params.tripId },
     include: {
@@ -32,7 +30,12 @@ export default async function DayPage({ params }: Props) {
   });
 
   if (!day) notFound();
-  if (day.trip.userId && day.trip.userId !== userId) notFound();
+
+  const isOwner = !day.trip.userId || (userId && day.trip.userId === userId);
+  if (!day.trip.isPublic && !isOwner) {
+    if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/days/${params.slug}`);
+    notFound();
+  }
 
   const allDays = day.trip.days;
   const currentIndex = allDays.findIndex((d) => d.id === day.id);
@@ -74,7 +77,7 @@ export default async function DayPage({ params }: Props) {
         </div>
 
         <DayTimeline
-          tripId={params.tripId}
+          tripId={isOwner ? params.tripId : ""}
           dayId={day.id}
           dayNumber={day.dayNumber}
           dayTitle={day.title}

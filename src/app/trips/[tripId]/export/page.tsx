@@ -13,8 +13,6 @@ export default async function ExportPage({ params }: Props) {
   const session = await getAuthSession();
   const userId = (session?.user as any)?.id;
 
-  if (!userId) redirect("/login");
-
   const trip = await db.trip.findUnique({
     where: { id: params.tripId },
     include: {
@@ -31,7 +29,12 @@ export default async function ExportPage({ params }: Props) {
   });
 
   if (!trip) notFound();
-  if (trip.userId && trip.userId !== userId) notFound();
+
+  const isOwner = !trip.userId || (userId && trip.userId === userId);
+  if (!trip.isPublic && !isOwner) {
+    if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/export`);
+    notFound();
+  }
 
   const exportData = {
     id: trip.id,

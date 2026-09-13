@@ -71,6 +71,7 @@ model Trip {
   currency     String          @default("JPY")
   baseCurrency String          @default("THB")
   exchangeRate Float           @default(0.24) // JPY * exchangeRate = THB approx
+  isPublic     Boolean         @default(true)
   
   days         TripDay[]
   hotels       HotelBooking[]
