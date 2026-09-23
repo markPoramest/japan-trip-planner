@@ -7,7 +7,7 @@ import { deleteActivity, updateTripDay } from "@/lib/actions";
 import ActivityFormModal from "./ActivityFormModal";
 import {
   Clock, MapPin, CreditCard, Train, ExternalLink,
-  Plus, Edit2, Trash2, Banknote, DollarSign, AlertCircle, Check, X, Loader2,
+  Plus, Edit2, Trash2, Banknote, DollarSign, AlertCircle, Check, X, Loader2, Globe,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -25,6 +25,7 @@ interface Activity {
 
 interface DayTimelineProps {
   tripId: string;
+  isOwner?: boolean;
   dayId: string;
   dayNumber: number;
   dayTitle: string;
@@ -37,6 +38,7 @@ interface DayTimelineProps {
 
 export default function DayTimeline({
   tripId,
+  isOwner = false,
   dayId,
   dayNumber,
   dayTitle,
@@ -68,6 +70,7 @@ export default function DayTimeline({
   });
 
   async function handleDelete(id: string) {
+    if (!isOwner) return;
     if (!confirm(t("deleteConfirm"))) return;
     setDeletingId(id);
     try {
@@ -83,6 +86,7 @@ export default function DayTimeline({
 
   function handleSaveDayTitle(e: React.FormEvent) {
     e.preventDefault();
+    if (!isOwner) return;
     const newTitle = titleInput.trim();
     if (!newTitle) return;
 
@@ -166,27 +170,36 @@ export default function DayTimeline({
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight truncate">
                   {currentTitle}
                 </h1>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTitleInput(currentTitle);
-                    setIsEditingTitle(true);
-                  }}
-                  className="p-1.5 rounded-lg text-text-faint hover:text-accent hover:bg-bg-surface transition-colors cursor-pointer"
-                  title={t("editDayTitle")}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTitleInput(currentTitle);
+                      setIsEditingTitle(true);
+                    }}
+                    className="p-1.5 rounded-lg text-text-faint hover:text-accent hover:bg-bg-surface transition-colors cursor-pointer"
+                    title={t("editDayTitle")}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          <button
-            onClick={() => { setEditingActivity(null); setModalOpen(true); }}
-            className="self-start md:self-auto px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-bold shadow-accent flex items-center gap-2 transition-all hover:scale-105 cursor-pointer flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" /> {t("addStopActivity")}
-          </button>
+          {isOwner ? (
+            <button
+              onClick={() => { setEditingActivity(null); setModalOpen(true); }}
+              className="self-start md:self-auto px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-bold shadow-accent flex items-center gap-2 transition-all hover:scale-105 cursor-pointer flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" /> {t("addStopActivity")}
+            </button>
+          ) : (
+            <span className="self-start md:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-surface border border-border text-xs font-semibold text-text-muted">
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{language === "th" ? "โหมดอ่านอย่างเดียว" : "View Only"}</span>
+            </span>
+          )}
         </div>
 
         {/* Live Cost Stats */}
@@ -293,23 +306,25 @@ export default function DayTimeline({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { setEditingActivity(activity); setModalOpen(true); }}
-                      className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer"
-                      title={t("editStopActivity")}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(activity.id)}
-                      disabled={deletingId === activity.id}
-                      className="p-2 rounded-xl text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
-                      title={t("deleteTrip")}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {isOwner && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setEditingActivity(activity); setModalOpen(true); }}
+                        className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer"
+                        title={t("editStopActivity")}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(activity.id)}
+                        disabled={deletingId === activity.id}
+                        className="p-2 rounded-xl text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+                        title={t("deleteTrip")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

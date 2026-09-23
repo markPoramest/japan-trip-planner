@@ -9,6 +9,7 @@ import { updateTripDay } from "@/lib/actions";
 
 interface DayCardProps {
   tripId: string;
+  isOwner?: boolean;
   index?: number;
   day: {
     id: string;
@@ -29,7 +30,7 @@ interface DayCardProps {
   };
 }
 
-export default function DayCard({ day, tripId, index = 0 }: DayCardProps) {
+export default function DayCard({ day, tripId, isOwner = false, index = 0 }: DayCardProps) {
   const { t, language } = useLanguage();
   const [navigating, setNavigating] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -54,6 +55,7 @@ export default function DayCard({ day, tripId, index = 0 }: DayCardProps) {
   function handleSaveTitle(e: React.MouseEvent | React.KeyboardEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!isOwner) return;
     const newTitle = inputTitle.trim();
     if (!newTitle) return;
 
@@ -174,19 +176,21 @@ export default function DayCard({ day, tripId, index = 0 }: DayCardProps) {
             <h3 className="text-lg font-bold text-text-primary group-hover:text-accent transition-colors leading-snug truncate">
               {dayTitle}
             </h3>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setInputTitle(dayTitle);
-                setIsEditingTitle(true);
-              }}
-              className="p-1 rounded-lg text-text-muted hover:text-accent hover:bg-bg-surface transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0"
-              title={t("editDayTitle")}
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setInputTitle(dayTitle);
+                  setIsEditingTitle(true);
+                }}
+                className="p-1 rounded-lg text-text-muted hover:text-accent hover:bg-bg-surface transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0"
+                title={t("editDayTitle")}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         )}
 

@@ -93,7 +93,7 @@ export default function SettingsKebab() {
   }
 
   return (
-    <div className="relative inline-block text-left z-50" ref={menuRef}>
+    <div className="relative inline-block text-left z-50 flex-shrink-0" ref={menuRef}>
       {/* Profile & Settings Trigger button with Person Icon */}
       <button
         type="button"
@@ -106,7 +106,7 @@ export default function SettingsKebab() {
         aria-expanded={isOpen}
         aria-haspopup="true"
         title={session?.user?.name ? `${session.user.name} (${t("settings")})` : t("settings")}
-        className={`h-9 px-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all shadow-sm active:scale-95 select-none ${
+        className={`h-9 px-2 sm:px-2.5 rounded-xl border flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm active:scale-95 select-none flex-shrink-0 ${
           isOpen
             ? "bg-accent text-white border-accent shadow-accent scale-105"
             : "bg-bg-card hover:bg-bg-surface border-border text-text-secondary hover:text-accent"
@@ -116,14 +116,14 @@ export default function SettingsKebab() {
           <img
             src={session.user.image}
             alt={session.user.name || "User"}
-            className="w-5 h-5 rounded-full object-cover border border-accent/40"
+            className="w-6 h-6 rounded-full object-cover border border-accent/40 flex-shrink-0 aspect-square"
           />
         ) : session?.user ? (
-          <div className="w-5 h-5 rounded-full bg-accent/20 text-accent font-bold text-[10px] flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-accent/20 text-accent font-bold text-[10px] flex items-center justify-center flex-shrink-0 aspect-square">
             {session.user.name ? session.user.name.charAt(0).toUpperCase() : "U"}
           </div>
         ) : (
-          <User className="w-4 h-4 pointer-events-none" />
+          <User className="w-4 h-4 pointer-events-none flex-shrink-0" />
         )}
         {session?.user?.name && (
           <span className="text-xs font-bold max-w-[80px] truncate hidden sm:inline">

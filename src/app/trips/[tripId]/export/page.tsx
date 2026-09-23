@@ -30,7 +30,16 @@ export default async function ExportPage({ params }: Props) {
 
   if (!trip) notFound();
 
-  const isOwner = !trip.userId || (userId && trip.userId === userId);
+  let isOwner = false;
+  if (userId) {
+    if (!trip.userId) {
+      await db.trip.update({ where: { id: trip.id }, data: { userId } });
+      isOwner = true;
+    } else if (trip.userId === userId) {
+      isOwner = true;
+    }
+  }
+
   if (!trip.isPublic && !isOwner) {
     if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/export`);
     notFound();

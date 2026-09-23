@@ -291,6 +291,7 @@ export default function TripOverviewClient({
                 date: typeof day.date === "string" ? new Date(day.date) : day.date,
               }}
               tripId={trip.id}
+              isOwner={isOwner}
               index={idx}
             />
           ))}
@@ -345,6 +346,7 @@ export default function TripOverviewClient({
       <ShareTripModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
+        isOwner={isOwner}
         trip={{
           id: trip.id,
           title: trip.title,
@@ -372,7 +374,6 @@ export default function TripOverviewClient({
           passes: trip.passes,
           flights: trip.flights,
         }}
-        isOwner={isOwner}
       />
     </main>
   );

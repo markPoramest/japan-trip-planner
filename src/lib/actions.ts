@@ -96,6 +96,58 @@ export async function createFullTrip(data: {
   return trip;
 }
 
+// ─────────────────────────────────────────────
+// AUTH & OWNERSHIP HELPERS
+// ─────────────────────────────────────────────
+
+async function getAuthenticatedUser(): Promise<string> {
+  const session = await getAuthSession();
+  const userId = (session?.user as any)?.id;
+  if (!userId) {
+    throw new Error("Unauthorized: Please sign in to edit this trip");
+  }
+  return userId;
+}
+
+async function verifyTripOwnership(tripId: string): Promise<void> {
+  const userId = await getAuthenticatedUser();
+  const trip = await db.trip.findUnique({
+    where: { id: tripId },
+    select: { id: true, userId: true },
+  });
+  if (!trip) throw new Error("Trip not found");
+  if (!trip.userId) {
+    await db.trip.update({ where: { id: tripId }, data: { userId } });
+    return;
+  }
+  if (trip.userId !== userId) {
+    throw new Error("Forbidden: You are not authorized to edit this trip");
+  }
+}
+
+async function verifyDayOwnership(dayId: string, expectedTripId?: string): Promise<string> {
+  const day = await db.tripDay.findUnique({
+    where: { id: dayId },
+    select: { tripId: true },
+  });
+  if (!day) throw new Error("Day not found");
+  if (expectedTripId && day.tripId !== expectedTripId) {
+    throw new Error("Invalid trip day");
+  }
+  await verifyTripOwnership(day.tripId);
+  return day.tripId;
+}
+
+async function verifyActivityOwnership(activityId: string): Promise<string> {
+  const activity = await db.dayActivity.findUnique({
+    where: { id: activityId },
+    select: { day: { select: { tripId: true } } },
+  });
+  if (!activity) throw new Error("Activity not found");
+  await verifyTripOwnership(activity.day.tripId);
+  return activity.day.tripId;
+}
+
 export async function updateTrip(tripId: string, data: {
   title?: string;
   startDate?: string;
@@ -105,16 +157,7 @@ export async function updateTrip(tripId: string, data: {
   baseCurrency?: string;
   exchangeRate?: number;
 }) {
-  const session = await getAuthSession();
-  const userId = (session?.user as any)?.id;
-
-  // Verify ownership if trip has a userId
-  if (userId) {
-    const existing = await db.trip.findUnique({ where: { id: tripId }, select: { userId: true } });
-    if (existing?.userId && existing.userId !== userId) {
-      throw new Error("Unauthorized");
-    }
-  }
+  await verifyTripOwnership(tripId);
 
   const updateData: any = {};
   if (data.title !== undefined) updateData.title = data.title;
@@ -227,14 +270,7 @@ export async function updateTrip(tripId: string, data: {
 }
 
 export async function updateTripVisibility(tripId: string, isPublic: boolean) {
-  const session = await getAuthSession();
-  const userId = (session?.user as any)?.id;
-
-  const trip = await db.trip.findUnique({ where: { id: tripId }, select: { userId: true } });
-  if (!trip) throw new Error("Trip not found");
-  if (trip.userId && userId && trip.userId !== userId) {
-    throw new Error("Unauthorized");
-  }
+  await verifyTripOwnership(tripId);
 
   const updated = await db.trip.update({
     where: { id: tripId },
@@ -251,6 +287,8 @@ export async function updateTripDay(
   tripId: string,
   data: { title?: string; date?: string; dayNumber?: number }
 ) {
+  await verifyDayOwnership(dayId, tripId);
+
   const updateData: any = {};
   if (data.title !== undefined) {
     updateData.title = data.title;
@@ -275,6 +313,8 @@ export async function updateTripDay(
 }
 
 export async function createPass(tripId: string, data: { name: string; costJpy?: number; validDays?: number; notes?: string }) {
+  await verifyTripOwnership(tripId);
+
   const pass = await db.passBooking.create({
     data: {
       tripId,
@@ -290,21 +330,14 @@ export async function createPass(tripId: string, data: { name: string; costJpy?:
 }
 
 export async function deletePass(id: string, tripId: string) {
+  await verifyTripOwnership(tripId);
   await db.passBooking.delete({ where: { id } });
   revalidatePath(`/trips/${tripId}`);
   revalidatePath("/trips");
 }
 
 export async function deleteTrip(tripId: string) {
-  const session = await getAuthSession();
-  const userId = (session?.user as any)?.id;
-
-  if (userId) {
-    const existing = await db.trip.findUnique({ where: { id: tripId }, select: { userId: true } });
-    if (existing?.userId && existing.userId !== userId) {
-      throw new Error("Unauthorized");
-    }
-  }
+  await verifyTripOwnership(tripId);
 
   await db.trip.delete({ where: { id: tripId } });
   revalidatePath("/trips");
@@ -324,6 +357,8 @@ export async function createTripDay(data: {
   title: string;
   notes?: string;
 }) {
+  await verifyTripOwnership(data.tripId);
+
   const tripDay = await db.tripDay.create({
     data: {
       tripId: data.tripId,
@@ -340,6 +375,7 @@ export async function createTripDay(data: {
 }
 
 export async function deleteTripDay(id: string, tripId: string) {
+  await verifyTripOwnership(tripId);
   await db.tripDay.delete({ where: { id } });
   revalidatePath(`/trips/${tripId}`);
 }
@@ -357,6 +393,8 @@ export async function createActivity(dayId: string, data: {
   usingPass?: string;
   remark?: string;
 }) {
+  await verifyDayOwnership(dayId);
+
   const count = await db.dayActivity.count({ where: { dayId } });
   const newActivity = await db.dayActivity.create({
     data: {
@@ -387,6 +425,8 @@ export async function updateActivity(id: string, data: {
   usingPass?: string | null;
   remark?: string | null;
 }) {
+  await verifyActivityOwnership(id);
+
   const updated = await db.dayActivity.update({
     where: { id },
     data: {
@@ -407,6 +447,8 @@ export async function updateActivity(id: string, data: {
 }
 
 export async function deleteActivity(id: string) {
+  await verifyActivityOwnership(id);
+
   const activity = await db.dayActivity.findUnique({
     where: { id },
     include: { day: true },
@@ -426,6 +468,10 @@ export async function deleteActivity(id: string) {
 export async function updateHotel(id: string, data: {
   name?: string; dateRange?: string; costThb?: number; costJpy?: number; notes?: string;
 }) {
+  const existing = await db.hotelBooking.findUnique({ where: { id }, select: { tripId: true } });
+  if (!existing) throw new Error("Hotel not found");
+  await verifyTripOwnership(existing.tripId);
+
   const hotel = await db.hotelBooking.update({ where: { id }, data });
   revalidatePath(`/trips/${hotel.tripId}/bookings`);
   revalidatePath(`/trips/${hotel.tripId}`);
@@ -435,6 +481,10 @@ export async function updateHotel(id: string, data: {
 export async function updatePass(id: string, data: {
   name?: string; costJpy?: number; costThb?: number; notes?: string;
 }) {
+  const existing = await db.passBooking.findUnique({ where: { id }, select: { tripId: true } });
+  if (!existing) throw new Error("Pass not found");
+  await verifyTripOwnership(existing.tripId);
+
   const pass = await db.passBooking.update({ where: { id }, data });
   revalidatePath(`/trips/${pass.tripId}/bookings`);
   revalidatePath(`/trips/${pass.tripId}`);
@@ -444,6 +494,10 @@ export async function updatePass(id: string, data: {
 export async function updateBudget(id: string, data: {
   category?: string; amountJpy?: number; amountThb?: number; notes?: string;
 }) {
+  const existing = await db.budgetWallet.findUnique({ where: { id }, select: { tripId: true } });
+  if (!existing) throw new Error("Budget not found");
+  await verifyTripOwnership(existing.tripId);
+
   const budget = await db.budgetWallet.update({ where: { id }, data });
   revalidatePath(`/trips/${budget.tripId}/bookings`);
   revalidatePath(`/trips/${budget.tripId}`);
@@ -457,6 +511,8 @@ export async function updateBudget(id: string, data: {
 export async function createHotel(tripId: string, data: {
   name: string; dateRange: string; costThb?: number; costJpy?: number; notes?: string;
 }) {
+  await verifyTripOwnership(tripId);
+
   const hotel = await db.hotelBooking.create({ data: { tripId, ...data } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
@@ -466,6 +522,10 @@ export async function createHotel(tripId: string, data: {
 export async function updateFlight(id: string, data: {
   flightNo?: string; route?: string; costThb?: number; costJpy?: number; notes?: string;
 }) {
+  const existing = await db.flightBooking.findUnique({ where: { id }, select: { tripId: true } });
+  if (!existing) throw new Error("Flight not found");
+  await verifyTripOwnership(existing.tripId);
+
   const flight = await db.flightBooking.update({ where: { id }, data });
   revalidatePath(`/trips/${flight.tripId}/bookings`);
   revalidatePath(`/trips/${flight.tripId}`);
@@ -473,12 +533,14 @@ export async function updateFlight(id: string, data: {
 }
 
 export async function deleteFlight(id: string, tripId: string) {
+  await verifyTripOwnership(tripId);
   await db.flightBooking.delete({ where: { id } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
 }
 
 export async function deleteHotel(id: string, tripId: string) {
+  await verifyTripOwnership(tripId);
   await db.hotelBooking.delete({ where: { id } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
@@ -487,6 +549,8 @@ export async function deleteHotel(id: string, tripId: string) {
 export async function createFlight(tripId: string, data: {
   flightNo: string; route: string; costThb?: number; notes?: string;
 }) {
+  await verifyTripOwnership(tripId);
+
   const flight = await db.flightBooking.create({ data: { tripId, ...data } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
@@ -496,6 +560,8 @@ export async function createFlight(tripId: string, data: {
 export async function createBudgetWallet(tripId: string, data: {
   category: string; amountJpy: number; amountThb: number; notes?: string;
 }) {
+  await verifyTripOwnership(tripId);
+
   const wallet = await db.budgetWallet.create({ data: { tripId, ...data } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
@@ -503,6 +569,7 @@ export async function createBudgetWallet(tripId: string, data: {
 }
 
 export async function deleteBudgetWallet(id: string, tripId: string) {
+  await verifyTripOwnership(tripId);
   await db.budgetWallet.delete({ where: { id } });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);

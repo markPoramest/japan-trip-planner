@@ -230,31 +230,31 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
     <div className="min-h-screen bg-bg-base pb-20">
       {/* Top Bar */}
       <header className="border-b border-border bg-bg-surface/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
               alt="Japan Trip Planner"
-              className="w-10 h-10 object-contain drop-shadow-sm"
+              className="w-9 h-9 sm:w-10 sm:h-10 object-contain drop-shadow-sm flex-shrink-0"
             />
-            <div>
-              <span className="text-base font-bold text-text-primary">
+            <div className="min-w-0">
+              <span className="text-sm sm:text-base font-bold text-text-primary truncate block sm:inline">
                 {t("appTitle")}
               </span>
-              <span className="ml-2 text-xs text-text-muted">
+              <span className="ml-2 text-xs text-text-muted hidden sm:inline">
                 {t("appSubtitle")}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <Link
               href="/trips/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold shadow-accent hover:bg-accent-light transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-accent text-white text-xs font-bold shadow-accent hover:bg-accent-light transition-all cursor-pointer flex-shrink-0"
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>{t("planNewTrip")}</span>
+              <PlusCircle className="w-4 h-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">{t("planNewTrip")}</span>
             </Link>
 
             <SettingsKebab />

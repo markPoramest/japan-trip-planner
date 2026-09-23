@@ -31,7 +31,16 @@ export default async function DayPage({ params }: Props) {
 
   if (!day) notFound();
 
-  const isOwner = !day.trip.userId || (userId && day.trip.userId === userId);
+  let isOwner = false;
+  if (userId) {
+    if (!day.trip.userId) {
+      await db.trip.update({ where: { id: day.tripId }, data: { userId } });
+      isOwner = true;
+    } else if (day.trip.userId === userId) {
+      isOwner = true;
+    }
+  }
+
   if (!day.trip.isPublic && !isOwner) {
     if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/days/${params.slug}`);
     notFound();
@@ -78,6 +87,7 @@ export default async function DayPage({ params }: Props) {
 
         <DayTimeline
           tripId={isOwner ? params.tripId : ""}
+          isOwner={isOwner}
           dayId={day.id}
           dayNumber={day.dayNumber}
           dayTitle={day.title}
