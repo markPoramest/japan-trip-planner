@@ -24,21 +24,40 @@ export default function DayTimelineSkeleton() {
             </div>
             <div className="w-64 h-8 skeleton-shimmer rounded-xl" />
           </div>
-          <div className="w-36 h-10 skeleton-shimmer rounded-xl" />
+          <div className="flex items-center gap-2">
+            <div className="w-28 h-10 skeleton-shimmer rounded-xl" />
+            <div className="w-36 h-10 skeleton-shimmer rounded-xl" />
+          </div>
         </div>
 
-        {/* 3 Day Stat Cards Skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-border">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between">
-              <div className="space-y-1.5">
-                <div className="w-20 h-3 skeleton-shimmer rounded" />
-                <div className="w-24 h-5 skeleton-shimmer rounded" />
-                <div className="w-16 h-2.5 skeleton-shimmer rounded" />
-              </div>
-              <div className="w-8 h-8 rounded-lg skeleton-shimmer" />
+        {/* Cost Stats Skeleton — Primary + 2 subset */}
+        <div className="space-y-2 pt-5 border-t border-border">
+          {/* Primary total card */}
+          <div className="bg-bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between">
+            <div className="space-y-1.5">
+              <div className="w-32 h-3 skeleton-shimmer rounded" />
+              <div className="w-24 h-6 skeleton-shimmer rounded" />
+              <div className="w-16 h-2.5 skeleton-shimmer rounded" />
             </div>
-          ))}
+            <div className="w-10 h-10 rounded-lg skeleton-shimmer" />
+          </div>
+
+          {/* Subset cards */}
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-bg-card/60 border border-border/60 border-l-2 border-l-border rounded-lg px-2.5 py-2 flex items-center justify-between gap-2">
+                <div className="space-y-1 min-w-0">
+                  <div className="w-16 h-2.5 skeleton-shimmer rounded" />
+                  <div className="w-20 h-4 skeleton-shimmer rounded" />
+                  <div className="w-14 h-2 skeleton-shimmer rounded" />
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <div className="w-7 h-7 rounded-md skeleton-shimmer" />
+                  <div className="w-8 h-3.5 rounded skeleton-shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

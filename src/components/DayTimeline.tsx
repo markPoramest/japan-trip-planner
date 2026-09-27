@@ -645,68 +645,72 @@ export default function DayTimeline({
         </div>
 
         {/* Live Cost Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border">
-          {[
-            {
-              label: `${t("totalDayCost")} (${activePlan.title})`,
-              value: formatJPY(totalCost),
-              sub: `≈ ${formatTHB(totalCost * exchangeRate)}`,
-              color: "text-text-primary",
-              bg: "bg-bg-surface",
-              icon: DollarSign,
-              iconColor: "text-sand",
-            },
-            {
-              label: t("icCardSpent"),
-              value: formatJPY(icCost),
-              sub: `≈ ${formatTHB(icCost * exchangeRate)}`,
-              color: "text-sage",
-              bg: "bg-bg-surface",
-              icon: CreditCard,
-              iconColor: "text-sage",
-              pct: totalCost > 0 ? Math.round((icCost / totalCost) * 100) : 0,
-              badge: "text-sage bg-sage-subtle border border-sage-muted",
-            },
-            {
-              label: t("cashAndCreditCard"),
-              value: formatJPY(nonIcCost),
-              sub: `≈ ${formatTHB(nonIcCost * exchangeRate)}`,
-              color: "text-sand",
-              bg: "bg-bg-surface",
-              icon: Banknote,
-              iconColor: "text-sand",
-              pct: totalCost > 0 ? Math.round((nonIcCost / totalCost) * 100) : 0,
-              badge: "text-sand bg-sand-subtle border border-sand-muted",
-            },
-          ].map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                data-aos="fade-up"
-                data-aos-delay={idx * 80}
-                className={`${stat.bg} border border-border rounded-xl p-3.5 flex items-center justify-between`}
-              >
-                <div>
-                  <div className="text-xs text-text-muted">{stat.label}</div>
-                  <div className={`text-base font-bold font-mono ${stat.color} mt-0.5`}>
-                    {stat.value}
-                  </div>
-                  <div className="text-[10px] text-text-muted font-mono">{stat.sub}</div>
-                </div>
-                <div className="flex flex-col items-end space-y-1">
-                  <div className="p-2 rounded-lg bg-bg-card border border-border">
-                    <Icon className={`w-4 h-4 ${stat.iconColor}`} />
-                  </div>
-                  {stat.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${stat.badge}`}>
-                      {stat.pct}%
-                    </span>
-                  )}
-                </div>
+        <div className="space-y-2 pt-4 border-t border-border">
+          {/* Primary: Total Day Cost */}
+          <div
+            data-aos="fade-up"
+            className="bg-bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs text-text-muted">{t("totalDayCost")} ({activePlan.title})</div>
+              <div className="text-lg font-bold font-mono text-text-primary mt-0.5">
+                {formatJPY(totalCost)}
               </div>
-            );
-          })}
+              <div className="text-[10px] text-text-muted font-mono">≈ {formatTHB(totalCost * exchangeRate)}</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-bg-card border border-border">
+              <DollarSign className="w-5 h-5 text-sand" />
+            </div>
+          </div>
+
+          {/* Subset: IC Card + Cash/Credit breakdown */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* IC Card */}
+            <div
+              data-aos="fade-up"
+              data-aos-delay={80}
+              className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sage/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-[10px] text-text-faint font-medium truncate">{t("icCardSpent")}</div>
+                <div className="text-sm font-bold font-mono text-sage mt-0.5">
+                  {formatJPY(icCost)}
+                </div>
+                <div className="text-[9px] text-text-faint font-mono">≈ {formatTHB(icCost * exchangeRate)}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="p-1.5 rounded-md bg-bg-surface border border-border">
+                  <CreditCard className="w-3.5 h-3.5 text-sage" />
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold text-sage bg-sage-subtle border border-sage-muted">
+                  {totalCost > 0 ? Math.round((icCost / totalCost) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+
+            {/* Cash & Credit Card */}
+            <div
+              data-aos="fade-up"
+              data-aos-delay={160}
+              className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sand/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <div className="text-[10px] text-text-faint font-medium truncate">{t("cashAndCreditCard")}</div>
+                <div className="text-sm font-bold font-mono text-sand mt-0.5">
+                  {formatJPY(nonIcCost)}
+                </div>
+                <div className="text-[9px] text-text-faint font-mono">≈ {formatTHB(nonIcCost * exchangeRate)}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="p-1.5 rounded-md bg-bg-surface border border-border">
+                  <Banknote className="w-3.5 h-3.5 text-sand" />
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold text-sand bg-sand-subtle border border-sand-muted">
+                  {totalCost > 0 ? Math.round((nonIcCost / totalCost) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

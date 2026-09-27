@@ -73,21 +73,36 @@ export default async function ExportPage({ params }: Props) {
       validDays: p.validDays,
       notes: p.notes,
     })),
-    days: trip.days.map((d) => ({
-      id: d.id,
-      dayNumber: d.dayNumber,
-      date: d.date.toISOString(),
-      dayOfWeek: d.dayOfWeek,
-      title: d.title,
-      activities: d.activities.map((a) => ({
-        id: a.id,
-        time: a.time,
-        location: a.location,
-        activity: a.activity,
-        usingPass: a.usingPass,
-        remark: a.remark,
-      })),
-    })),
+    days: trip.days.map((d) => {
+      // Use only the main plan's activities for export
+      const mainPlan = d.plans?.find((p) => p.isMain);
+      const mainActivities = mainPlan
+        ? mainPlan.activities
+        : d.activities.filter((a) => {
+            // Fallback: if no plans exist, use activities without planId or all
+            if (d.plans && d.plans.length > 0) {
+              const mainPlanId = d.plans.find((p) => p.isMain)?.id;
+              return mainPlanId ? a.planId === mainPlanId : true;
+            }
+            return true;
+          });
+
+      return {
+        id: d.id,
+        dayNumber: d.dayNumber,
+        date: d.date.toISOString(),
+        dayOfWeek: d.dayOfWeek,
+        title: d.title,
+        activities: mainActivities.map((a) => ({
+          id: a.id,
+          time: a.time,
+          location: a.location,
+          activity: a.activity,
+          usingPass: a.usingPass,
+          remark: a.remark,
+        })),
+      };
+    }),
   };
 
   return <ExportItineraryView trip={exportData} />;
