@@ -62,6 +62,12 @@ export default async function DayPage({ params }: Props) {
   const nextDay = currentIndex < allDays.length - 1 ? allDays[currentIndex + 1] : null;
   const availablePasses = day.trip.passes.map((p) => p.name);
 
+  // Previous day's last location
+  const previousDayLastLocation =
+    prevDay?.activities && prevDay.activities.length > 0
+      ? prevDay.activities[prevDay.activities.length - 1]?.location
+      : undefined;
+
   // Compute all distinct previous locations used in this trip sorted by frequency
   const locationCounts = new Map<string, number>();
   for (const d of day.trip.days) {
@@ -129,6 +135,7 @@ export default async function DayPage({ params }: Props) {
           availablePasses={availablePasses}
           exchangeRate={day.trip.exchangeRate}
           previousLocations={previousLocations}
+          previousDayLastLocation={previousDayLastLocation}
         />
       </main>
     </div>

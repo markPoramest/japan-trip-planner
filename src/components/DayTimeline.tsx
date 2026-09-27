@@ -36,6 +36,7 @@ interface DayTimelineProps {
   availablePasses?: string[];
   exchangeRate?: number;
   previousLocations?: { name: string; count?: number }[] | string[];
+  previousDayLastLocation?: string;
 }
 
 export default function DayTimeline({
@@ -50,6 +51,7 @@ export default function DayTimeline({
   availablePasses = [],
   exchangeRate = 0.24,
   previousLocations = [],
+  previousDayLastLocation,
 }: DayTimelineProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -370,6 +372,8 @@ export default function DayTimeline({
         exchangeRate={exchangeRate}
         availablePasses={availablePasses}
         previousLocations={previousLocations}
+        existingActivities={activities}
+        previousDayLastLocation={previousDayLastLocation}
       />
     </div>
   );

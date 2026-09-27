@@ -59,6 +59,7 @@ export default function ActivityFormModal({
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [remark, setRemark] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savingMode, setSavingMode] = useState<"close" | "another">("close");
 
   // Fuzzy Search Locations State
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
@@ -266,8 +267,6 @@ export default function ActivityFormModal({
   const thbVal = inputCurrency === "THB" ? numVal : Math.round(numVal * exchangeRate);
 
   const resolvedPass = isCustomMode ? customPass.trim() || null : selectedPass || null;
-
-  const [savingMode, setSavingMode] = useState<"close" | "another">("close");
 
   async function handleSubmit(e: React.FormEvent, addAnother = false) {
     e.preventDefault();

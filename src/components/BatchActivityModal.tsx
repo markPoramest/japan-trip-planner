@@ -22,6 +22,8 @@ interface BatchActivityModalProps {
   exchangeRate?: number;
   availablePasses?: string[];
   previousLocations?: { name: string; count?: number }[] | string[];
+  existingActivities?: Array<{ location?: string | null; activity?: string | null }>;
+  previousDayLastLocation?: string;
 }
 
 interface BatchStopRow {
@@ -75,6 +77,8 @@ export default function BatchActivityModal({
   exchangeRate = 0.24,
   availablePasses = [],
   previousLocations = [],
+  existingActivities = [],
+  previousDayLastLocation,
 }: BatchActivityModalProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -85,7 +89,6 @@ export default function BatchActivityModal({
   const [activeDropdownRowId, setActiveDropdownRowId] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const suggestionsListRef = useRef<HTMLUListElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -100,23 +103,30 @@ export default function BatchActivityModal({
     }
   }, [isOpen]);
 
-  // Click outside listener to dismiss location dropdown
+  // Click outside listener to dismiss location dropdown when clicking other zones
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setActiveDropdownRowId(null);
+      if (!activeDropdownRowId) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // If clicked inside the currently open dropdown wrapper, don't dismiss
+      const wrapper = target.closest(
+        `[data-location-dropdown-wrapper="${activeDropdownRowId}"]`
+      );
+      if (wrapper) {
+        return;
       }
+      setActiveDropdownRowId(null);
     }
+
     if (activeDropdownRowId) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [activeDropdownRowId]);
 
-  // Normalized available trip locations
+  // Normalized available trip locations from DB
   const availableLocations = useMemo(() => {
     const map = new Map<string, { name: string; count: number }>();
     if (previousLocations && Array.isArray(previousLocations)) {
@@ -147,32 +157,144 @@ export default function BatchActivityModal({
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [previousLocations]);
 
+  const activeRowIndex = rows.findIndex((r) => r.id === activeDropdownRowId);
+
+  // Dynamic available locations for the active row, including above places in this batch & previous stops
+  const activeLocationsList = useMemo(() => {
+    if (activeRowIndex < 0) return [];
+
+    const map = new Map<
+      string,
+      {
+        name: string;
+        count?: number;
+        isAbove?: boolean;
+        isImmediateAbove?: boolean;
+      }
+    >();
+
+    // 1. Immediately above stop in this batch (rows[activeRowIndex - 1])
+    if (activeRowIndex > 0) {
+      const prevStop = rows[activeRowIndex - 1];
+      const prevLoc = prevStop?.location?.trim();
+      if (prevLoc && prevLoc.toLowerCase() !== "location") {
+        const key = prevLoc.toLowerCase();
+        map.set(key, {
+          name: prevLoc,
+          isAbove: true,
+          isImmediateAbove: true,
+        });
+      }
+
+      // Other stops above in this batch (rows[0 ... activeRowIndex - 2])
+      for (let i = activeRowIndex - 2; i >= 0; i--) {
+        const loc = rows[i]?.location?.trim();
+        if (loc && loc.toLowerCase() !== "location") {
+          const key = loc.toLowerCase();
+          if (!map.has(key)) {
+            map.set(key, {
+              name: loc,
+              isAbove: true,
+              isImmediateAbove: false,
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Existing activities already in this day (from DB)
+    if (existingActivities && existingActivities.length > 0) {
+      for (let i = existingActivities.length - 1; i >= 0; i--) {
+        const loc = existingActivities[i]?.location?.trim();
+        if (loc && loc.toLowerCase() !== "location") {
+          const key = loc.toLowerCase();
+          if (!map.has(key)) {
+            const isImmediate = activeRowIndex === 0 && i === existingActivities.length - 1;
+            map.set(key, {
+              name: loc,
+              isAbove: true,
+              isImmediateAbove: isImmediate,
+            });
+          }
+        }
+      }
+    }
+
+    // 3. Previous day's last location (if first row of this day and no existing activities)
+    if (
+      activeRowIndex === 0 &&
+      (!existingActivities || existingActivities.length === 0) &&
+      previousDayLastLocation &&
+      previousDayLastLocation.trim()
+    ) {
+      const pLoc = previousDayLastLocation.trim();
+      const key = pLoc.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          name: pLoc,
+          isAbove: true,
+          isImmediateAbove: true,
+        });
+      }
+    }
+
+    // 4. All other previous trip & hotel locations
+    for (const item of availableLocations) {
+      const key = item.name.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.count = item.count;
+      } else {
+        map.set(key, {
+          name: item.name,
+          count: item.count,
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [
+    activeRowIndex,
+    rows,
+    existingActivities,
+    previousDayLastLocation,
+    availableLocations,
+    t,
+  ]);
+
   // Active row's query and filtered locations
   const activeRow = rows.find((r) => r.id === activeDropdownRowId);
   const filteredLocations = useMemo(() => {
-    if (!activeRow || !availableLocations.length) return [];
+    if (!activeRow || !activeLocationsList.length) return [];
     const query = activeRow.location.trim();
     if (!query) {
-      return availableLocations.map((item) => ({
-        ...item,
-        score: item.count || 1,
-        indices: [] as number[],
-      }));
+      return activeLocationsList
+        .map((item) => ({
+          ...item,
+          score: item.isImmediateAbove
+            ? 100000
+            : item.isAbove
+            ? 50000
+            : (item.count || 1),
+          indices: [] as number[],
+        }))
+        .sort((a, b) => b.score - a.score);
     }
 
-    return availableLocations
+    return activeLocationsList
       .map((item) => {
         const res = fuzzyMatch(query, item.name);
+        const bonus = item.isImmediateAbove ? 400 : item.isAbove ? 200 : 0;
         return {
           ...item,
           matches: res.matches,
-          score: res.score,
+          score: res.score + bonus,
           indices: res.indices,
         };
       })
       .filter((item) => item.matches)
       .sort((a, b) => b.score - a.score);
-  }, [activeRow, availableLocations]);
+  }, [activeRow, activeLocationsList]);
 
   if (!isOpen || !mounted) return null;
 
@@ -205,7 +327,7 @@ export default function BatchActivityModal({
     rowId: string
   ) => {
     if (activeDropdownRowId !== rowId || filteredLocations.length === 0) {
-      if (e.key === "ArrowDown" && availableLocations.length > 0) {
+      if (e.key === "ArrowDown" && activeLocationsList.length > 0) {
         e.preventDefault();
         setActiveDropdownRowId(rowId);
         setHighlightedIndex(0);
@@ -337,7 +459,6 @@ export default function BatchActivityModal({
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto">
       <div
-        ref={containerRef}
         className="bg-bg-card border border-border rounded-3xl w-full max-w-3xl shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] overflow-hidden relative"
       >
         {/* Header */}
@@ -431,7 +552,7 @@ export default function BatchActivityModal({
                     <label className={labelClass}>
                       <MapPin className="w-3 h-3 text-accent" /> {t("locationPlace")} *
                     </label>
-                    <div className="relative">
+                    <div className="relative" data-location-dropdown-wrapper={row.id}>
                       <input
                         type="text"
                         value={row.location}
@@ -441,7 +562,7 @@ export default function BatchActivityModal({
                           setHighlightedIndex(-1);
                         }}
                         onFocus={() => {
-                          if (availableLocations.length > 0) {
+                          if (activeLocationsList.length > 0) {
                             setActiveDropdownRowId(row.id);
                           }
                         }}
@@ -450,7 +571,7 @@ export default function BatchActivityModal({
                         className={`${inputClass} pr-8`}
                         autoComplete="off"
                       />
-                      {availableLocations.length > 0 && (
+                      {activeLocationsList.length > 0 && (
                         <button
                           type="button"
                           tabIndex={-1}
@@ -470,7 +591,7 @@ export default function BatchActivityModal({
                       )}
 
                       {/* Fuzzy Suggestions Dropdown */}
-                      {isDropdownOpen && availableLocations.length > 0 && (
+                      {isDropdownOpen && activeLocationsList.length > 0 && (
                         <div className="absolute left-0 right-0 top-full mt-1.5 bg-bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
                           <div className="px-2.5 py-1.5 bg-bg-surface border-b border-border/70 flex items-center justify-between text-[10px] text-text-muted font-bold">
                             <span className="flex items-center gap-1">

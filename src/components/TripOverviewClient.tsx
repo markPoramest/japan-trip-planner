@@ -302,21 +302,32 @@ export default function TripOverviewClient({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trip.days.map((day, idx) => (
-            <DayCard
-              key={day.id}
-              day={{
-                ...day,
-                date: typeof day.date === "string" ? new Date(day.date) : day.date,
-              }}
-              tripId={trip.id}
-              isOwner={isOwner}
-              index={idx}
-              exchangeRate={trip.exchangeRate}
-              availablePasses={availablePasses}
-              previousLocations={previousLocations}
-            />
-          ))}
+          {trip.days.map((day, idx) => {
+            let prevDayLastLocation: string | undefined = undefined;
+            if (idx > 0) {
+              const prevDay = trip.days[idx - 1];
+              const prevActs = prevDay?.activities || [];
+              if (prevActs.length > 0) {
+                prevDayLastLocation = prevActs[prevActs.length - 1]?.location;
+              }
+            }
+            return (
+              <DayCard
+                key={day.id}
+                day={{
+                  ...day,
+                  date: typeof day.date === "string" ? new Date(day.date) : day.date,
+                }}
+                tripId={trip.id}
+                isOwner={isOwner}
+                index={idx}
+                exchangeRate={trip.exchangeRate}
+                availablePasses={availablePasses}
+                previousLocations={previousLocations}
+                previousDayLastLocation={prevDayLastLocation}
+              />
+            );
+          })}
         </div>
       </section>
 

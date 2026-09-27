@@ -15,6 +15,7 @@ interface DayCardProps {
   exchangeRate?: number;
   availablePasses?: string[];
   previousLocations?: { name: string; count?: number }[] | string[];
+  previousDayLastLocation?: string;
   day: {
     id: string;
     dayNumber: number;
@@ -42,6 +43,7 @@ export default function DayCard({
   exchangeRate = 0.24,
   availablePasses = [],
   previousLocations = [],
+  previousDayLastLocation,
 }: DayCardProps) {
   const { t, language } = useLanguage();
   const [navigating, setNavigating] = useState(false);
@@ -288,6 +290,8 @@ export default function DayCard({
           exchangeRate={exchangeRate}
           availablePasses={availablePasses}
           previousLocations={previousLocations}
+          existingActivities={day.activities}
+          previousDayLastLocation={previousDayLastLocation}
         />
       )}
     </>
