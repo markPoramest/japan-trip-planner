@@ -381,6 +381,187 @@ export async function deleteTripDay(id: string, tripId: string) {
 }
 
 // ─────────────────────────────────────────────
+// DAY PLAN CRUD (MAIN & SUBSTITUTE PLANS)
+// ─────────────────────────────────────────────
+
+export async function createSubstitutePlan(
+  dayId: string,
+  data: {
+    title?: string;
+    tag?: string;
+    notes?: string;
+    copyFromPlanId?: string;
+  }
+) {
+  const tripId = await verifyDayOwnership(dayId);
+  const day = await db.tripDay.findUnique({
+    where: { id: dayId },
+    include: {
+      plans: {
+        include: { activities: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
+  });
+  if (!day) throw new Error("Day not found");
+
+  const substitutePlans = day.plans.filter((p) => !p.isMain);
+  if (substitutePlans.length >= 3) {
+    throw new Error("Maximum of 3 substitute plans reached for this day");
+  }
+
+  // Derive next letter code: B, C, D
+  const letters = ["B", "C", "D"];
+  const existingTitles = day.plans.map((p) => p.title.toLowerCase());
+  let nextLetter = letters[substitutePlans.length] || "B";
+  for (const l of letters) {
+    if (!existingTitles.some((t) => t.includes(`plan ${l.toLowerCase()}`))) {
+      nextLetter = l;
+      break;
+    }
+  }
+
+  const defaultTitle = data.title?.trim() || `Plan ${nextLetter}`;
+  const nextSortOrder = (day.plans.reduce((max, p) => Math.max(max, p.sortOrder), 0) || 0) + 1;
+
+  const newPlan = await db.dayPlan.create({
+    data: {
+      dayId,
+      title: defaultTitle,
+      tag: data.tag || "backup",
+      notes: data.notes || null,
+      isMain: false,
+      sortOrder: nextSortOrder,
+    },
+  });
+
+  // By default, clone activities from the current Main Plan if available
+  let sourcePlanId = data.copyFromPlanId;
+  if (sourcePlanId === undefined) {
+    const mainPlan = day.plans.find((p) => p.isMain);
+    if (mainPlan) sourcePlanId = mainPlan.id;
+  }
+
+  if (sourcePlanId) {
+    const sourcePlan = day.plans.find((p) => p.id === sourcePlanId);
+    if (sourcePlan && sourcePlan.activities.length > 0) {
+      await db.dayActivity.createMany({
+        data: sourcePlan.activities.map((a, idx) => ({
+          dayId,
+          planId: newPlan.id,
+          time: a.time,
+          location: a.location,
+          activity: a.activity,
+          cost: a.cost,
+          isIcCard: a.isIcCard,
+          usingPass: a.usingPass,
+          remark: a.remark,
+          sortOrder: idx,
+        })),
+      });
+    }
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/days/${day.slug}`);
+  return newPlan;
+}
+
+export async function swapMainPlan(
+  dayId: string,
+  substitutePlanId: string,
+  newDayTitle?: string
+) {
+  const tripId = await verifyDayOwnership(dayId);
+  const day = await db.tripDay.findUnique({
+    where: { id: dayId },
+    include: { plans: true },
+  });
+  if (!day) throw new Error("Day not found");
+
+  const targetPlan = day.plans.find((p) => p.id === substitutePlanId);
+  if (!targetPlan) throw new Error("Substitute plan not found");
+  if (targetPlan.isMain) return { targetPlan, slug: day.slug, dayTitle: day.title };
+
+  const currentMain = day.plans.find((p) => p.isMain);
+
+  let newSlug = day.slug;
+  let finalDayTitle = day.title;
+
+  await db.$transaction(async (tx) => {
+    if (currentMain) {
+      await tx.dayPlan.update({
+        where: { id: currentMain.id },
+        data: { isMain: false },
+      });
+    }
+    await tx.dayPlan.update({
+      where: { id: targetPlan.id },
+      data: { isMain: true },
+    });
+
+    if (newDayTitle && newDayTitle.trim() && newDayTitle.trim() !== day.title) {
+      finalDayTitle = newDayTitle.trim();
+      await tx.tripDay.update({
+        where: { id: dayId },
+        data: {
+          title: finalDayTitle,
+        },
+      });
+    }
+  });
+
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/days/${day.slug}`);
+  return { targetPlan, slug: day.slug, dayTitle: finalDayTitle };
+}
+
+export async function updateDayPlan(
+  planId: string,
+  data: { title?: string; tag?: string; notes?: string }
+) {
+  const plan = await db.dayPlan.findUnique({
+    where: { id: planId },
+    include: { day: true },
+  });
+  if (!plan) throw new Error("Plan not found");
+  await verifyTripOwnership(plan.day.tripId);
+
+  const updated = await db.dayPlan.update({
+    where: { id: planId },
+    data: {
+      title: data.title !== undefined ? data.title.trim() : undefined,
+      tag: data.tag !== undefined ? data.tag : undefined,
+      notes: data.notes !== undefined ? data.notes : undefined,
+    },
+  });
+
+  revalidatePath(`/trips/${plan.day.tripId}`);
+  revalidatePath(`/trips/${plan.day.tripId}/days/${plan.day.slug}`);
+  return updated;
+}
+
+export async function deleteSubstitutePlan(planId: string) {
+  const plan = await db.dayPlan.findUnique({
+    where: { id: planId },
+    include: { day: true },
+  });
+  if (!plan) throw new Error("Plan not found");
+  if (plan.isMain) {
+    throw new Error("Cannot delete the active Main Plan");
+  }
+  await verifyTripOwnership(plan.day.tripId);
+
+  await db.$transaction([
+    db.dayActivity.deleteMany({ where: { planId } }),
+    db.dayPlan.delete({ where: { id: planId } }),
+  ]);
+
+  revalidatePath(`/trips/${plan.day.tripId}`);
+  revalidatePath(`/trips/${plan.day.tripId}/days/${plan.day.slug}`);
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────
 // ACTIVITY CRUD
 // ─────────────────────────────────────────────
 
@@ -392,13 +573,40 @@ export async function createActivity(dayId: string, data: {
   isIcCard: boolean;
   usingPass?: string;
   remark?: string;
+  planId?: string;
 }) {
   await verifyDayOwnership(dayId);
 
-  const count = await db.dayActivity.count({ where: { dayId } });
+  let targetPlanId = data.planId;
+  if (!targetPlanId) {
+    const mainPlan = await db.dayPlan.findFirst({
+      where: { dayId, isMain: true },
+      select: { id: true },
+    });
+    if (mainPlan) {
+      targetPlanId = mainPlan.id;
+    } else {
+      const fallbackPlan = await db.dayPlan.create({
+        data: {
+          dayId,
+          title: "Plan A (Main)",
+          tag: "main",
+          isMain: true,
+          sortOrder: 0,
+        },
+      });
+      targetPlanId = fallbackPlan.id;
+    }
+  }
+
+  const count = await db.dayActivity.count({
+    where: targetPlanId ? { planId: targetPlanId } : { dayId },
+  });
+
   const newActivity = await db.dayActivity.create({
     data: {
       dayId,
+      planId: targetPlanId || null,
       time: data.time || "",
       location: data.location || "",
       activity: data.activity || "",
@@ -426,7 +634,8 @@ export async function createActivitiesBatch(
     isIcCard: boolean;
     usingPass?: string;
     remark?: string;
-  }>
+  }>,
+  planId?: string
 ) {
   await verifyDayOwnership(dayId);
   if (!items || items.length === 0) return { success: true, count: 0 };
@@ -436,10 +645,35 @@ export async function createActivitiesBatch(
     select: { slug: true, tripId: true },
   });
 
-  const existingCount = await db.dayActivity.count({ where: { dayId } });
+  let targetPlanId = planId;
+  if (!targetPlanId) {
+    const mainPlan = await db.dayPlan.findFirst({
+      where: { dayId, isMain: true },
+      select: { id: true },
+    });
+    if (mainPlan) {
+      targetPlanId = mainPlan.id;
+    } else {
+      const fallbackPlan = await db.dayPlan.create({
+        data: {
+          dayId,
+          title: "Plan A (Main)",
+          tag: "main",
+          isMain: true,
+          sortOrder: 0,
+        },
+      });
+      targetPlanId = fallbackPlan.id;
+    }
+  }
+
+  const existingCount = await db.dayActivity.count({
+    where: targetPlanId ? { planId: targetPlanId } : { dayId },
+  });
 
   const activitiesData = items.map((item, index) => ({
     dayId,
+    planId: targetPlanId || null,
     time: item.time || "09:00",
     location: item.location || "",
     activity: item.activity || "",
@@ -459,6 +693,107 @@ export async function createActivitiesBatch(
     revalidatePath(`/trips/${day.tripId}`);
   }
   return { success: true, count: items.length };
+}
+
+export async function saveActivitiesBatch(
+  dayId: string,
+  data: {
+    planId?: string;
+    items: Array<{
+      id?: string;
+      time: string;
+      location: string;
+      activity: string;
+      cost: number;
+      isIcCard: boolean;
+      usingPass?: string | null;
+      remark?: string | null;
+    }>;
+    deletedIds?: string[];
+  }
+) {
+  await verifyDayOwnership(dayId);
+
+  const day = await db.tripDay.findUnique({
+    where: { id: dayId },
+    select: { slug: true, tripId: true },
+  });
+  if (!day) throw new Error("Day not found");
+
+  let targetPlanId = data.planId;
+  if (!targetPlanId) {
+    const mainPlan = await db.dayPlan.findFirst({
+      where: { dayId, isMain: true },
+      select: { id: true },
+    });
+    if (mainPlan) {
+      targetPlanId = mainPlan.id;
+    } else {
+      const fallbackPlan = await db.dayPlan.create({
+        data: {
+          dayId,
+          title: "Plan A (Main)",
+          tag: "main",
+          isMain: true,
+          sortOrder: 0,
+        },
+      });
+      targetPlanId = fallbackPlan.id;
+    }
+  }
+
+  await db.$transaction(async (tx) => {
+    // 1. Delete removed activities
+    if (data.deletedIds && data.deletedIds.length > 0) {
+      await tx.dayActivity.deleteMany({
+        where: {
+          id: { in: data.deletedIds },
+          dayId,
+        },
+      });
+    }
+
+    // 2. Process items (update existing or create new)
+    for (let i = 0; i < data.items.length; i++) {
+      const item = data.items[i];
+      if (item.id && !item.id.startsWith("row-")) {
+        // Update existing activity
+        await tx.dayActivity.update({
+          where: { id: item.id },
+          data: {
+            time: item.time || "09:00",
+            location: item.location || "",
+            activity: item.activity || "",
+            cost: Number(item.cost) || 0,
+            isIcCard: Boolean(item.isIcCard),
+            usingPass: item.usingPass || null,
+            remark: item.remark || null,
+            sortOrder: i,
+          },
+        });
+      } else {
+        // Create new activity
+        await tx.dayActivity.create({
+          data: {
+            dayId,
+            planId: targetPlanId || null,
+            time: item.time || "09:00",
+            location: item.location || "",
+            activity: item.activity || "",
+            cost: Number(item.cost) || 0,
+            isIcCard: Boolean(item.isIcCard),
+            usingPass: item.usingPass || null,
+            remark: item.remark || null,
+            sortOrder: i,
+          },
+        });
+      }
+    }
+  });
+
+  revalidatePath(`/trips/${day.tripId}/days/${day.slug}`);
+  revalidatePath(`/trips/${day.tripId}`);
+  return { success: true };
 }
 
 export async function updateActivity(id: string, data: {

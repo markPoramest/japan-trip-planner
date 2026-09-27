@@ -95,15 +95,36 @@ model TripDay {
   notes       String?
   
   activities  DayActivity[]
+  plans       DayPlan[]
   
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+}
+
+model DayPlan {
+  id          String        @id @default(cuid())
+  dayId       String
+  day         TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  title       String        // e.g. "Plan A (Main)", "Plan B (Rainy)", "Plan C (Indoor)"
+  tag         String?       // "main" | "rainy" | "indoor" | "chill" | "backup" | "custom"
+  isMain      Boolean       @default(false)
+  sortOrder   Int           @default(0)
+  notes       String?
+  
+  activities  DayActivity[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([dayId, isMain])
 }
 
 model DayActivity {
   id          String    @id @default(cuid())
   dayId       String
   day         TripDay   @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  planId      String?
+  plan        DayPlan?  @relation(fields: [planId], references: [id], onDelete: Cascade)
   time        String    // e.g. "06:00", "09:30"
   location    String    // e.g. "Hirosaki Castle"
   activity    String    // e.g. "Apple picking & Mt. Iwaki view"
@@ -115,6 +136,9 @@ model DayActivity {
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([planId])
+  @@index([dayId])
 }
 
 model HotelBooking {

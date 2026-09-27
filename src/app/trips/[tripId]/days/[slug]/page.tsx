@@ -16,28 +16,46 @@ export default async function DayPage({ params }: Props) {
   const session = await getAuthSession();
   const userId = (session?.user as any)?.id;
 
-  const day = await db.tripDay.findFirst({
-    where: { slug: params.slug, tripId: params.tripId },
-    include: {
-      activities: { orderBy: { sortOrder: "asc" } },
-      trip: {
-        include: {
-          days: {
-            orderBy: { dayNumber: "asc" },
-            include: {
-              activities: {
-                select: { location: true },
-              },
+  const dayInclude = {
+    activities: { orderBy: { sortOrder: "asc" as const } },
+    plans: {
+      orderBy: { sortOrder: "asc" as const },
+      include: { activities: { orderBy: { sortOrder: "asc" as const } } },
+    },
+    trip: {
+      include: {
+        days: {
+          orderBy: { dayNumber: "asc" as const },
+          include: {
+            activities: {
+              select: { location: true },
             },
           },
-          hotels: {
-            select: { name: true },
-          },
-          passes: true,
         },
+        hotels: {
+          select: { name: true },
+        },
+        passes: true,
       },
     },
+  };
+
+  let day = await db.tripDay.findFirst({
+    where: { slug: params.slug, tripId: params.tripId },
+    include: dayInclude,
   });
+
+  // Fallback: If slug changed or differs, look up by dayNumber
+  if (!day) {
+    const match = params.slug.match(/^day-(\d+)/i);
+    if (match) {
+      const dayNum = parseInt(match[1], 10);
+      day = await db.tripDay.findFirst({
+        where: { dayNumber: dayNum, tripId: params.tripId },
+        include: dayInclude,
+      });
+    }
+  }
 
   if (!day) notFound();
 
@@ -132,6 +150,7 @@ export default async function DayPage({ params }: Props) {
           date={day.date}
           dayOfWeek={day.dayOfWeek}
           activities={day.activities}
+          plans={day.plans}
           availablePasses={availablePasses}
           exchangeRate={day.trip.exchangeRate}
           previousLocations={previousLocations}

@@ -18,7 +18,13 @@ export default async function TripOverviewPage({ params }: Props) {
     where: { id: params.tripId },
     include: {
       days: {
-        include: { activities: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          activities: { orderBy: { sortOrder: "asc" } },
+          plans: {
+            orderBy: { sortOrder: "asc" },
+            include: { activities: { orderBy: { sortOrder: "asc" } } },
+          },
+        },
         orderBy: { dayNumber: "asc" },
       },
       hotels: { orderBy: { createdAt: "asc" } },
@@ -47,7 +53,10 @@ export default async function TripOverviewPage({ params }: Props) {
     notFound();
   }
 
-  const allActivities = trip.days.flatMap((d) => d.activities);
+  const allActivities = trip.days.flatMap((d) => {
+    const mainPlan = d.plans.find((p) => p.isMain) || d.plans[0];
+    return mainPlan ? mainPlan.activities : d.activities;
+  });
   const totalActivitiesCostJpy = allActivities.reduce((s, a) => s + (a.cost || 0), 0);
   const totalIcSpendJpy = allActivities.filter((a) => a.isIcCard).reduce((s, a) => s + (a.cost || 0), 0);
   const totalNonIcSpendJpy = totalActivitiesCostJpy - totalIcSpendJpy;

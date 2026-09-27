@@ -22,6 +22,10 @@ export default async function ExportPage({ params }: Props) {
       days: {
         include: {
           activities: { orderBy: { sortOrder: "asc" } },
+          plans: {
+            orderBy: { sortOrder: "asc" },
+            include: { activities: { orderBy: { sortOrder: "asc" } } },
+          },
         },
         orderBy: { dayNumber: "asc" },
       },

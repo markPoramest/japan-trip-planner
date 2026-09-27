@@ -19,6 +19,7 @@ interface ActivityModalProps {
   exchangeRate?: number;
   availablePasses?: string[];
   previousLocations?: { name: string; count?: number }[] | string[];
+  planId?: string;
   activity?: {
     id: string;
     time: string;
@@ -40,6 +41,7 @@ export default function ActivityFormModal({
   exchangeRate = 0.24,
   availablePasses = [],
   previousLocations = [],
+  planId,
   activity,
 }: ActivityModalProps) {
   const router = useRouter();
@@ -292,6 +294,7 @@ export default function ActivityFormModal({
           isIcCard,
           usingPass: resolvedPass || undefined,
           remark: remark || undefined,
+          planId,
         });
       }
       if (location.trim()) {

@@ -59,6 +59,7 @@ interface TripData {
       isIcCard: boolean;
       usingPass: string | null;
     }[];
+    plans?: any[];
   }[];
   hotels: any[];
   passes: any[];

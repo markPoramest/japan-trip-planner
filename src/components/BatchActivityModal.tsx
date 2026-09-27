@@ -3,11 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { createActivitiesBatch } from "@/lib/actions";
+import { createActivitiesBatch, saveActivitiesBatch } from "@/lib/actions";
 import {
   X, Clock, MapPin, AlignLeft, CreditCard, Train, Ticket,
   Link as LinkIcon, CircleDollarSign, ArrowRightLeft, Loader2, Sparkles,
-  ChevronDown, Plus, Trash2, CheckCircle2
+  ChevronDown, Plus, Trash2, CheckCircle2, Edit3
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -22,12 +22,25 @@ interface BatchActivityModalProps {
   exchangeRate?: number;
   availablePasses?: string[];
   previousLocations?: { name: string; count?: number }[] | string[];
-  existingActivities?: Array<{ location?: string | null; activity?: string | null }>;
+  existingActivities?: Array<{
+    id?: string;
+    time?: string;
+    location: string;
+    activity: string;
+    cost?: number;
+    isIcCard?: boolean;
+    usingPass?: string | null;
+    remark?: string | null;
+  }>;
   previousDayLastLocation?: string;
+  planId?: string;
+  initialMode?: "create" | "edit";
+  onSuccess?: (msg?: string) => void;
 }
 
 interface BatchStopRow {
   id: string;
+  activityId?: string;
   hour: string;
   minute: string;
   location: string;
@@ -79,12 +92,17 @@ export default function BatchActivityModal({
   previousLocations = [],
   existingActivities = [],
   previousDayLastLocation,
+  planId,
+  initialMode,
+  onSuccess,
 }: BatchActivityModalProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
 
   const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">(initialMode || "create");
   const [rows, setRows] = useState<BatchStopRow[]>([]);
+  const [deletedActivityIds, setDeletedActivityIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeDropdownRowId, setActiveDropdownRowId] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -94,14 +112,74 @@ export default function BatchActivityModal({
     setMounted(true);
   }, []);
 
-  // Initialize with 2 empty rows on open
+  function buildRowsFromExisting(): BatchStopRow[] {
+    if (!existingActivities || existingActivities.length === 0) {
+      return [createEmptyRow(0), createEmptyRow(1, "09")];
+    }
+    return existingActivities.map((a, i) => {
+      const parts = (a.time || "09:00").split(":");
+      const h = parts[0] || "09";
+      const m = parts[1] || "00";
+      const isCustomPass =
+        Boolean(a.usingPass && !availablePasses.includes(a.usingPass));
+      return {
+        id: a.id ? `row-${a.id}` : `row-${Date.now()}-${i}`,
+        activityId: a.id,
+        hour: h.padStart(2, "0"),
+        minute: m.padStart(2, "0"),
+        location: a.location || "",
+        activity: a.activity || "",
+        currency: "JPY",
+        amount: a.cost ? String(a.cost) : "",
+        isIcCard: Boolean(a.isIcCard),
+        selectedPass: isCustomPass ? "__custom__" : a.usingPass || "",
+        customPass: isCustomPass ? a.usingPass || "" : "",
+        isCustomMode: Boolean(isCustomPass),
+        remark: a.remark || "",
+      };
+    });
+  }
+
+  // Initialize rows on modal open based on mode
   useEffect(() => {
     if (isOpen) {
-      setRows([createEmptyRow(0), createEmptyRow(1, "09")]);
+      const defaultMode =
+        initialMode || (existingActivities.length > 0 ? "edit" : "create");
+      setMode(defaultMode);
+      setDeletedActivityIds([]);
       setActiveDropdownRowId(null);
       setHighlightedIndex(-1);
+
+      if (defaultMode === "edit" && existingActivities.length > 0) {
+        setRows(buildRowsFromExisting());
+      } else {
+        setRows([createEmptyRow(0), createEmptyRow(1, "09")]);
+      }
+    }
+  }, [isOpen, initialMode]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
     }
   }, [isOpen]);
+
+  function handleSwitchMode(newMode: "create" | "edit") {
+    setMode(newMode);
+    setDeletedActivityIds([]);
+    setActiveDropdownRowId(null);
+    setHighlightedIndex(-1);
+
+    if (newMode === "edit") {
+      setRows(buildRowsFromExisting());
+    } else {
+      setRows([createEmptyRow(0), createEmptyRow(1, "09")]);
+    }
+  }
 
   // Click outside listener to dismiss location dropdown when clicking other zones
   useEffect(() => {
@@ -308,7 +386,13 @@ export default function BatchActivityModal({
   };
 
   const handleRemoveRow = (id: string) => {
-    if (rows.length <= 1) return;
+    if (mode === "create" && rows.length <= 1) return;
+    const target = rows.find((r) => r.id === id);
+    if (target?.activityId) {
+      setDeletedActivityIds((prev) =>
+        prev.includes(target.activityId!) ? prev : [...prev, target.activityId!]
+      );
+    }
     setRows((prev) => prev.filter((r) => r.id !== id));
     if (activeDropdownRowId === id) {
       setActiveDropdownRowId(null);
@@ -406,14 +490,14 @@ export default function BatchActivityModal({
       (r) => r.location.trim() !== "" || r.activity.trim() !== ""
     );
 
-    if (validRows.length === 0) {
+    if (validRows.length === 0 && deletedActivityIds.length === 0) {
       alert(t("noStopsAdded"));
       return;
     }
 
     setLoading(true);
     try {
-      const itemsToCreate = validRows.map((r) => {
+      const itemsToSave = validRows.map((r) => {
         const numVal = parseFloat(r.amount) || 0;
         const jpyVal =
           r.currency === "JPY"
@@ -430,6 +514,7 @@ export default function BatchActivityModal({
         const m = (r.minute || "00").padStart(2, "0");
 
         return {
+          id: r.activityId,
           time: `${h}:${m}`,
           location: r.location.trim(),
           activity: r.activity.trim() || r.location.trim(),
@@ -440,12 +525,28 @@ export default function BatchActivityModal({
         };
       });
 
-      await createActivitiesBatch(dayId, itemsToCreate);
+      if (
+        mode === "edit" ||
+        deletedActivityIds.length > 0 ||
+        itemsToSave.some((it) => it.id)
+      ) {
+        await saveActivitiesBatch(dayId, {
+          planId,
+          items: itemsToSave,
+          deletedIds: deletedActivityIds,
+        });
+      } else {
+        await createActivitiesBatch(dayId, itemsToSave, planId);
+      }
+
       router.refresh();
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to batch save activities");
+      alert(err?.message || "Failed to batch save activities");
     } finally {
       setLoading(false);
     }
@@ -462,11 +563,17 @@ export default function BatchActivityModal({
         className="bg-bg-card border border-border rounded-3xl w-full max-w-3xl shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] overflow-hidden relative"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-bg-surface/50">
-          <div>
-            <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
-              <Plus className="w-5 h-5 text-accent" />
-              <span>{t("addStopActivity")}</span>
+        <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-bg-surface/50">
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-text-primary flex items-center gap-2 flex-wrap">
+              {mode === "edit" ? (
+                <Edit3 className="w-5 h-5 text-accent" />
+              ) : (
+                <Plus className="w-5 h-5 text-accent" />
+              )}
+              <span>
+                {mode === "edit" ? t("batchEditModalTitle") : t("addStopActivity")}
+              </span>
               {dayNumber !== undefined && (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-bold">
                   {t("day")} {dayNumber} {dayTitle ? `· ${dayTitle}` : ""}
@@ -478,7 +585,7 @@ export default function BatchActivityModal({
             onClick={onClose}
             disabled={loading}
             type="button"
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer disabled:opacity-50"
+            className="self-end sm:self-auto p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -486,12 +593,25 @@ export default function BatchActivityModal({
 
         {/* Scrollable Rows Container */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          {rows.map((row, idx) => {
-            const isDropdownOpen = activeDropdownRowId === row.id;
+          {rows.length === 0 ? (
+            <div className="py-12 text-center text-text-muted flex flex-col items-center justify-center space-y-3 bg-bg-surface/50 border border-dashed border-border rounded-2xl">
+              <p className="text-xs font-semibold text-text-secondary">{t("noStopsAdded")}</p>
+              <button
+                type="button"
+                onClick={handleAddRow}
+                className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold hover:bg-accent-light transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t("addAnotherStop")}</span>
+              </button>
+            </div>
+          ) : (
+            rows.map((row, idx) => {
+              const isDropdownOpen = activeDropdownRowId === row.id;
 
-            return (
-              <div
-                key={row.id}
+              return (
+                <div
+                  key={row.id}
                 className="bg-bg-surface border border-border/80 rounded-2xl p-4 transition-all hover:border-accent/40 space-y-3 relative shadow-sm"
               >
                 {/* Row Header: Number + Quick Time + Delete */}
@@ -535,7 +655,7 @@ export default function BatchActivityModal({
                     {/* Delete Stop Button */}
                     <button
                       type="button"
-                      disabled={rows.length <= 1}
+                      disabled={mode === "create" && rows.length <= 1}
                       onClick={() => handleRemoveRow(row.id)}
                       className="p-1.5 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 cursor-pointer"
                       title={t("removeStop")}
@@ -773,22 +893,25 @@ export default function BatchActivityModal({
                 </div>
               </div>
             );
-          })}
+          })
+        )}
 
           {/* Add Another Stop Button */}
-          <button
-            type="button"
-            onClick={handleAddRow}
-            className="w-full py-2.5 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t("addAnotherStop")}</span>
-          </button>
+          {rows.length > 0 && (
+            <button
+              type="button"
+              onClick={handleAddRow}
+              className="w-full py-2.5 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t("addAnotherStop")}</span>
+            </button>
+          )}
         </div>
 
         {/* Footer Summary & Actions */}
         <div className="px-6 py-4 border-t border-border bg-bg-surface/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-text-muted flex items-center gap-3">
+          <div className="text-xs text-text-muted flex items-center gap-3 flex-wrap">
             <span>
               {t("totalEstimatedCost")}:{" "}
               <strong className="text-text-primary font-mono text-sm">
@@ -798,6 +921,18 @@ export default function BatchActivityModal({
                 (≈ {formatTHB(totalThb)})
               </span>
             </span>
+
+            {deletedActivityIds.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] font-bold flex items-center gap-1">
+                <Trash2 className="w-3 h-3" />
+                <span>
+                  {t("deletedStopsCount").replace(
+                    "{count}",
+                    String(deletedActivityIds.length)
+                  )}
+                </span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
@@ -825,6 +960,8 @@ export default function BatchActivityModal({
                   ? language === "th"
                     ? "กำลังบันทึกทั้งหมด..."
                     : "Saving all..."
+                  : mode === "edit"
+                  ? t("saveAllChanges")
                   : `${t("saveAllStops")} (${rows.filter((r) => r.location.trim() || r.activity.trim()).length})`}
               </span>
             </button>

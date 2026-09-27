@@ -20,7 +20,10 @@ export default async function SummaryPage({ params }: Props) {
     where: { id: params.tripId },
     include: {
       days: {
-        include: { activities: true },
+        include: {
+          activities: true,
+          plans: { include: { activities: true } },
+        },
         orderBy: { dayNumber: "asc" },
       },
       hotels: { orderBy: { createdAt: "asc" } },
@@ -34,8 +37,10 @@ export default async function SummaryPage({ params }: Props) {
   if (trip.userId && trip.userId !== userId) notFound();
 
   const dayRows = trip.days.map((day) => {
-    const total = day.activities.reduce((s, a) => s + (a.cost || 0), 0);
-    const ic = day.activities.filter((a) => a.isIcCard).reduce((s, a) => s + (a.cost || 0), 0);
+    const mainPlan = day.plans.find((p) => p.isMain) || day.plans[0];
+    const activities = mainPlan ? mainPlan.activities : day.activities;
+    const total = activities.reduce((s, a) => s + (a.cost || 0), 0);
+    const ic = activities.filter((a) => a.isIcCard).reduce((s, a) => s + (a.cost || 0), 0);
     return { id: day.id, slug: day.slug, dayNumber: day.dayNumber, title: day.title, total, ic, nonIc: total - ic };
   });
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatJPY } from "@/lib/utils";
-import { Calendar, CreditCard, Banknote, ArrowRight, MapPin, Loader2, Edit2, Check, X, Plus } from "lucide-react";
+import { Calendar, CreditCard, Banknote, ArrowRight, Loader2, Edit2, Check, X, Plus } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { updateTripDay } from "@/lib/actions";
 import BatchActivityModal from "./BatchActivityModal";
@@ -32,7 +32,36 @@ interface DayCardProps {
       isIcCard: boolean;
       usingPass: string | null;
     }[];
+    plans?: Array<{
+      id: string;
+      title: string;
+      tag: string | null;
+      isMain: boolean;
+      sortOrder: number;
+      notes: string | null;
+      activities: {
+        id: string;
+        time: string;
+        location: string;
+        activity: string;
+        cost: number;
+        isIcCard: boolean;
+        usingPass: string | null;
+      }[];
+    }>;
   };
+}
+
+function getPlanIcon(tag: string | null | undefined, isMain: boolean) {
+  if (isMain) return "⭐";
+  if (!tag) return "📋";
+  const lower = tag.toLowerCase();
+  if (lower.includes("rain") || lower.includes("weather")) return "🌧️";
+  if (lower.includes("indoor") || lower.includes("museum") || lower.includes("mall") || lower.includes("shopping")) return "🏛️";
+  if (lower.includes("chill") || lower.includes("relax") || lower.includes("cafe")) return "☕";
+  if (lower.includes("backup") || lower.includes("route") || lower.includes("detour")) return "⚡";
+  if (lower.includes("food") || lower.includes("eat")) return "🍱";
+  return "📋";
 }
 
 export default function DayCard({
@@ -53,13 +82,13 @@ export default function DayCard({
   const [inputTitle, setInputTitle] = useState(day.title);
   const [currentSlug, setCurrentSlug] = useState(day.slug);
 
-  const totalCost = day.activities.reduce((sum, a) => sum + (a.cost || 0), 0);
-  const icCost = day.activities.filter((a) => a.isIcCard).reduce((sum, a) => sum + (a.cost || 0), 0);
-  const nonIcCost = totalCost - icCost;
+  const mainPlan = day.plans?.find((p) => p.isMain) || day.plans?.[0];
+  const activeActivities = mainPlan ? mainPlan.activities : day.activities;
+  const substitutePlans = day.plans ? day.plans.filter((p) => !p.isMain) : [];
 
-  const topLocations = Array.from(new Set(day.activities.map((a) => a.location)))
-    .filter((loc) => loc && loc.toLowerCase() !== "location")
-    .slice(0, 3);
+  const totalCost = activeActivities.reduce((sum, a) => sum + (a.cost || 0), 0);
+  const icCost = activeActivities.filter((a) => a.isIcCard).reduce((sum, a) => sum + (a.cost || 0), 0);
+  const nonIcCost = totalCost - icCost;
 
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
   const formattedDate = new Date(day.date).toLocaleDateString(dateLocale, {
@@ -226,18 +255,28 @@ export default function DayCard({
             </div>
           )}
 
-          {/* Location pills */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {topLocations.map((loc, i) => (
-              <span
-                key={i}
-                className="text-[11px] text-text-secondary bg-bg-surface px-2 py-1 rounded-md flex items-center gap-1 border border-border/60"
-              >
-                <MapPin className="w-3 h-3 text-accent/70" />
-                <span className="truncate max-w-[150px]">{loc}</span>
+          {/* Substitute Plans Indicator Pills */}
+          {substitutePlans.length > 0 && (
+            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-text-faint">
+                {t("substitutePlans")}:
               </span>
-            ))}
-          </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-accent/15 text-accent font-bold border border-accent/25 flex items-center gap-1">
+                <span>⭐</span>
+                <span className="truncate max-w-[130px]">{mainPlan ? mainPlan.title : "Main"}</span>
+              </span>
+              {substitutePlans.map((sub) => (
+                <span
+                  key={sub.id}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-bg-surface text-text-muted font-medium border border-border flex items-center gap-1"
+                  title={sub.notes || sub.title}
+                >
+                  <span>{getPlanIcon(sub.tag, false)}</span>
+                  <span className="truncate max-w-[120px]">{sub.title}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Cost Summary */}
@@ -290,8 +329,9 @@ export default function DayCard({
           exchangeRate={exchangeRate}
           availablePasses={availablePasses}
           previousLocations={previousLocations}
-          existingActivities={day.activities}
+          existingActivities={activeActivities}
           previousDayLastLocation={previousDayLastLocation}
+          planId={mainPlan?.id}
         />
       )}
     </>
