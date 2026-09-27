@@ -1,12 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { createActivity, updateActivity } from "@/lib/actions";
-import { X, Clock, MapPin, AlignLeft, CreditCard, Train, Ticket, Link as LinkIcon, CircleDollarSign, ArrowRightLeft, Loader2, Sparkles } from "lucide-react";
+import {
+  X, Clock, MapPin, AlignLeft, CreditCard, Train, Ticket,
+  Link as LinkIcon, CircleDollarSign, ArrowRightLeft, Loader2, Sparkles, ChevronDown, Plus
+} from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
+import { fuzzyMatch, getMatchedSegments } from "@/lib/fuzzy";
 
 interface ActivityModalProps {
   isOpen: boolean;
@@ -14,6 +18,7 @@ interface ActivityModalProps {
   dayId: string;
   exchangeRate?: number;
   availablePasses?: string[];
+  previousLocations?: { name: string; count?: number }[] | string[];
   activity?: {
     id: string;
     time: string;
@@ -26,9 +31,7 @@ interface ActivityModalProps {
   } | null;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
-const TIME_PRESETS = ["08:00", "09:30", "12:00", "14:00", "18:00", "20:00"];
+
 
 export default function ActivityFormModal({
   isOpen,
@@ -36,6 +39,7 @@ export default function ActivityFormModal({
   dayId,
   exchangeRate = 0.24,
   availablePasses = [],
+  previousLocations = [],
   activity,
 }: ActivityModalProps) {
   const router = useRouter();
@@ -56,6 +60,156 @@ export default function ActivityFormModal({
   const [remark, setRemark] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Fuzzy Search Locations State
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [localLocations, setLocalLocations] = useState<string[]>([]);
+  const locationContainerRef = useRef<HTMLDivElement>(null);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsListRef = useRef<HTMLUListElement>(null);
+
+  // Normalize previousLocations and merge with any newly saved locations in current session
+  const availableLocations = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+
+    if (previousLocations && Array.isArray(previousLocations)) {
+      for (const item of previousLocations) {
+        if (typeof item === "string") {
+          const trimmed = item.trim();
+          if (trimmed && trimmed.toLowerCase() !== "location") {
+            const key = trimmed.toLowerCase();
+            const existing = map.get(key);
+            map.set(key, {
+              name: existing?.name || trimmed,
+              count: (existing?.count || 0) + 1,
+            });
+          }
+        } else if (item && typeof item.name === "string") {
+          const trimmed = item.name.trim();
+          if (trimmed && trimmed.toLowerCase() !== "location") {
+            const key = trimmed.toLowerCase();
+            const existing = map.get(key);
+            map.set(key, {
+              name: existing?.name || trimmed,
+              count: (existing?.count || 0) + (item.count || 1),
+            });
+          }
+        }
+      }
+    }
+
+    for (const loc of localLocations) {
+      const trimmed = loc.trim();
+      if (trimmed && trimmed.toLowerCase() !== "location") {
+        const key = trimmed.toLowerCase();
+        const existing = map.get(key);
+        map.set(key, {
+          name: existing?.name || trimmed,
+          count: (existing?.count || 0) + 1,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [previousLocations, localLocations]);
+
+  // Compute fuzzy matched locations based on current typed text
+  const filteredLocations = useMemo(() => {
+    if (!availableLocations.length) return [];
+    const query = location.trim();
+    if (!query) {
+      return availableLocations.map((item) => ({
+        ...item,
+        score: item.count || 1,
+        indices: [] as number[],
+      }));
+    }
+
+    return availableLocations
+      .map((item) => {
+        const res = fuzzyMatch(query, item.name);
+        return {
+          ...item,
+          matches: res.matches,
+          score: res.score,
+          indices: res.indices,
+        };
+      })
+      .filter((item) => item.matches)
+      .sort((a, b) => b.score - a.score);
+  }, [availableLocations, location]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        locationContainerRef.current &&
+        !locationContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowLocationSuggestions(false);
+      }
+    }
+    if (showLocationSuggestions) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showLocationSuggestions]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowLocationSuggestions(false);
+      setHighlightedIndex(-1);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (highlightedIndex >= 0 && suggestionsListRef.current) {
+      const items = suggestionsListRef.current.querySelectorAll("li");
+      const activeItem = items[highlightedIndex];
+      if (activeItem) {
+        activeItem.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [highlightedIndex]);
+
+  const selectLocation = (locName: string) => {
+    setLocation(locName);
+    setShowLocationSuggestions(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showLocationSuggestions || filteredLocations.length === 0) {
+      if (e.key === "ArrowDown" && availableLocations.length > 0) {
+        e.preventDefault();
+        setShowLocationSuggestions(true);
+        setHighlightedIndex(0);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % filteredLocations.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex(
+        (prev) => (prev - 1 + filteredLocations.length) % filteredLocations.length
+      );
+    } else if (e.key === "Enter") {
+      if (highlightedIndex >= 0 && highlightedIndex < filteredLocations.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectLocation(filteredLocations[highlightedIndex].name);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowLocationSuggestions(false);
+    } else if (e.key === "Tab") {
+      setShowLocationSuggestions(false);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -66,8 +220,8 @@ export default function ActivityFormModal({
       const parts = rawTime.split(":");
       const h = parts[0]?.padStart(2, "0") || "09";
       const m = parts[1]?.padStart(2, "0") || "00";
-      setSelectedHour(HOURS.includes(h) ? h : "09");
-      setSelectedMinute(MINUTES.includes(m) ? m : "00");
+      setSelectedHour(h);
+      setSelectedMinute(m);
 
       setLocation(activity.location || "");
       setActText(activity.activity || "");
@@ -104,22 +258,21 @@ export default function ActivityFormModal({
 
   if (!isOpen || !mounted) return null;
 
-  const time = `${selectedHour}:${selectedMinute}`;
+  const formattedHour = (selectedHour || "09").padStart(2, "0");
+  const formattedMinute = (selectedMinute || "00").padStart(2, "0");
+  const time = `${formattedHour}:${formattedMinute}`;
   const numVal = parseFloat(amountValue) || 0;
   const jpyVal = inputCurrency === "JPY" ? numVal : exchangeRate > 0 ? Math.round(numVal / exchangeRate) : 0;
   const thbVal = inputCurrency === "THB" ? numVal : Math.round(numVal * exchangeRate);
 
   const resolvedPass = isCustomMode ? customPass.trim() || null : selectedPass || null;
 
-  const handleQuickTime = (preset: string) => {
-    const [h, m] = preset.split(":");
-    setSelectedHour(h);
-    setSelectedMinute(m);
-  };
+  const [savingMode, setSavingMode] = useState<"close" | "another">("close");
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent, addAnother = false) {
     e.preventDefault();
     setLoading(true);
+    setSavingMode(addAnother ? "another" : "close");
     try {
       if (isEditing && activity) {
         await updateActivity(activity.id, {
@@ -142,8 +295,23 @@ export default function ActivityFormModal({
           remark: remark || undefined,
         });
       }
+      if (location.trim()) {
+        setLocalLocations((prev) => [location.trim(), ...prev]);
+      }
       router.refresh();
-      onClose();
+      if (addAnother && !isEditing) {
+        const curH = parseInt(selectedHour, 10);
+        const nextH = Math.min(23, curH + 2);
+        setSelectedHour(String(nextH).padStart(2, "0"));
+        setLocation("");
+        setActText("");
+        setAmountValue("");
+        setRemark("");
+        setIsIcCard(false);
+        locationInputRef.current?.focus();
+      } else {
+        onClose();
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to save activity");
@@ -192,69 +360,171 @@ export default function ActivityFormModal({
               <label className={labelClass}>
                 <Clock className="w-3.5 h-3.5 text-accent" /> {t("time")}
               </label>
-              
-              <div className="flex items-center gap-1.5">
-                <div className="flex-1">
-                  <select
-                    value={selectedHour}
-                    onChange={(e) => setSelectedHour(e.target.value)}
-                    className="w-full px-2.5 py-2.5 bg-bg-base border border-border rounded-xl text-center text-sm font-mono font-bold text-text-primary focus:outline-none focus:border-accent cursor-pointer"
-                  >
-                    {HOURS.map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span className="font-bold text-text-muted font-mono text-base">:</span>
-                <div className="flex-1">
-                  <select
-                    value={selectedMinute}
-                    onChange={(e) => setSelectedMinute(e.target.value)}
-                    className="w-full px-2.5 py-2.5 bg-bg-base border border-border rounded-xl text-center text-sm font-mono font-bold text-text-primary focus:outline-none focus:border-accent cursor-pointer"
-                  >
-                    {MINUTES.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
-              {/* Quick Time Presets */}
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {TIME_PRESETS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => handleQuickTime(p)}
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold border transition-all cursor-pointer ${
-                      time === p
-                        ? "bg-accent text-white border-accent shadow-sm"
-                        : "bg-bg-base text-text-muted border-border hover:border-accent/50 hover:text-text-primary"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 bg-bg-base border border-border rounded-xl px-3 py-2.5 focus-within:border-accent">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={selectedHour}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    const num = parseInt(digits, 10);
+                    if (digits === "" || (!isNaN(num) && num >= 0 && num <= 23)) {
+                      setSelectedHour(digits);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!selectedHour) setSelectedHour("09");
+                    else setSelectedHour(selectedHour.padStart(2, "0"));
+                  }}
+                  placeholder="09"
+                  className="w-full text-center bg-transparent text-sm font-mono font-bold text-text-primary focus:outline-none"
+                />
+                <span className="font-bold text-text-muted font-mono text-base">:</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={selectedMinute}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                    const num = parseInt(digits, 10);
+                    if (digits === "" || (!isNaN(num) && num >= 0 && num <= 59)) {
+                      setSelectedMinute(digits);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!selectedMinute) setSelectedMinute("00");
+                    else setSelectedMinute(selectedMinute.padStart(2, "0"));
+                  }}
+                  placeholder="00"
+                  className="w-full text-center bg-transparent text-sm font-mono font-bold text-text-primary focus:outline-none"
+                />
               </div>
             </div>
 
-            {/* Location */}
+            {/* Location with Fuzzy Search Dropdown */}
             <div className="sm:col-span-3">
               <label className={labelClass}>
                 <MapPin className="w-3.5 h-3.5 text-accent" /> {t("locationPlace")} *
               </label>
-              <input
-                required
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Asakusa Sensoji Temple"
-                className={inputClass}
-              />
+
+              <div className="relative z-30" ref={locationContainerRef}>
+                <input
+                  ref={locationInputRef}
+                  required
+                  type="text"
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setShowLocationSuggestions(true);
+                    setHighlightedIndex(-1);
+                  }}
+                  onFocus={() => {
+                    if (availableLocations.length > 0) {
+                      setShowLocationSuggestions(true);
+                    }
+                  }}
+                  onKeyDown={handleLocationKeyDown}
+                  placeholder="e.g. Asakusa Sensoji Temple"
+                  className={`${inputClass} ${availableLocations.length > 0 ? "pr-9" : ""}`}
+                  autoComplete="off"
+                />
+
+                {availableLocations.length > 0 && (
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      setShowLocationSuggestions((prev) => !prev);
+                      locationInputRef.current?.focus();
+                    }}
+                    title={t("viewPreviousLocations")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-bg-surface transition-colors cursor-pointer"
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${showLocationSuggestions ? "rotate-180 text-accent" : ""
+                        }`}
+                    />
+                  </button>
+                )}
+
+                {/* Suggestions Dropdown */}
+                {showLocationSuggestions && availableLocations.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-2 bg-bg-surface border-b border-border/70 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-accent" />
+                        {t("tripLocationsTitle")} ({filteredLocations.length})
+                      </span>
+                      <span className="text-[10px] text-text-faint hidden sm:inline">
+                        {t("fuzzySearchTip")}
+                      </span>
+                    </div>
+
+                    <ul
+                      ref={suggestionsListRef}
+                      className="max-h-52 overflow-y-auto divide-y divide-border/40 py-1"
+                      role="listbox"
+                    >
+                      {filteredLocations.length > 0 ? (
+                        filteredLocations.map((item, idx) => {
+                          const isHighlighted = idx === highlightedIndex;
+                          const segments = getMatchedSegments(item.name, item.indices);
+                          return (
+                            <li
+                              key={`${item.name}-${idx}`}
+                              role="option"
+                              aria-selected={isHighlighted}
+                              onMouseEnter={() => setHighlightedIndex(idx)}
+                              onMouseDown={(e) => {
+                                // Prevent input blur before click finishes
+                                e.preventDefault();
+                              }}
+                              onClick={() => selectLocation(item.name)}
+                              className={`px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${isHighlighted
+                                  ? "bg-accent/15 text-text-primary"
+                                  : "hover:bg-bg-surface text-text-secondary hover:text-text-primary"
+                                }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                                <MapPin
+                                  className={`w-3.5 h-3.5 flex-shrink-0 ${isHighlighted ? "text-accent" : "text-text-faint"
+                                    }`}
+                                />
+                                <span className="truncate">
+                                  {segments.map((seg, sIdx) =>
+                                    seg.match ? (
+                                      <span
+                                        key={sIdx}
+                                        className="text-accent font-extrabold underline decoration-accent/60"
+                                      >
+                                        {seg.text}
+                                      </span>
+                                    ) : (
+                                      <span key={sIdx}>{seg.text}</span>
+                                    )
+                                  )}
+                                </span>
+                              </div>
+                              {item.count && item.count > 1 ? (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20 flex-shrink-0">
+                                  {item.count}x
+                                </span>
+                              ) : null}
+                            </li>
+                          );
+                        })
+                      ) : (
+                        <li className="px-3 py-3 text-xs text-text-muted text-center italic">
+                          {t("noMatchingLocations")}
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -378,7 +648,7 @@ export default function ActivityFormModal({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-border flex justify-end space-x-3">
+          <div className="pt-3 border-t border-border flex items-center justify-end gap-2 flex-wrap">
             <button
               type="button"
               onClick={onClose}
@@ -387,13 +657,30 @@ export default function ActivityFormModal({
             >
               {t("cancel")}
             </button>
+            {!isEditing && (
+              <button
+                type="button"
+                disabled={loading || !location.trim() || !actText.trim()}
+                onClick={(e) => handleSubmit(e, true)}
+                className="px-3.5 py-2 rounded-xl bg-bg-surface border border-accent/40 text-accent hover:bg-accent/10 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                title={t("saveAndAddAnother")}
+              >
+                {loading && savingMode === "another" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                <span>{t("saveAndAddAnother")}</span>
+              </button>
+            )}
             <button
-              type="submit"
+              type="button"
               disabled={loading}
+              onClick={(e) => handleSubmit(e, false)}
               className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
             >
-              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>{loading ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : isEditing ? t("saveChanges") : t("addActivity")}</span>
+              {loading && savingMode === "close" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>{loading && savingMode === "close" ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : isEditing ? t("saveChanges") : t("addActivity")}</span>
             </button>
           </div>
         </form>

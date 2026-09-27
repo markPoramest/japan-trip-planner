@@ -22,7 +22,17 @@ export default async function DayPage({ params }: Props) {
       activities: { orderBy: { sortOrder: "asc" } },
       trip: {
         include: {
-          days: { orderBy: { dayNumber: "asc" } },
+          days: {
+            orderBy: { dayNumber: "asc" },
+            include: {
+              activities: {
+                select: { location: true },
+              },
+            },
+          },
+          hotels: {
+            select: { name: true },
+          },
           passes: true,
         },
       },
@@ -51,6 +61,28 @@ export default async function DayPage({ params }: Props) {
   const prevDay = currentIndex > 0 ? allDays[currentIndex - 1] : null;
   const nextDay = currentIndex < allDays.length - 1 ? allDays[currentIndex + 1] : null;
   const availablePasses = day.trip.passes.map((p) => p.name);
+
+  // Compute all distinct previous locations used in this trip sorted by frequency
+  const locationCounts = new Map<string, number>();
+  for (const d of day.trip.days) {
+    for (const a of d.activities) {
+      const loc = a.location?.trim();
+      if (loc && loc.toLowerCase() !== "location") {
+        locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
+      }
+    }
+  }
+
+  for (const h of day.trip.hotels || []) {
+    const hName = h.name?.trim();
+    if (hName && !locationCounts.has(hName)) {
+      locationCounts.set(hName, 1);
+    }
+  }
+
+  const previousLocations = Array.from(locationCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
 
   return (
     <div className="min-h-screen bg-bg-base pb-16">
@@ -96,6 +128,7 @@ export default async function DayPage({ params }: Props) {
           activities={day.activities}
           availablePasses={availablePasses}
           exchangeRate={day.trip.exchangeRate}
+          previousLocations={previousLocations}
         />
       </main>
     </div>

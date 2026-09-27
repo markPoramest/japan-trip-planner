@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TripStats from "@/components/TripStats";
@@ -80,6 +80,25 @@ export default function TripOverviewClient({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
+
+  const previousLocations = useMemo(() => {
+    const locMap = new Map<string, number>();
+    for (const d of trip.days) {
+      for (const a of d.activities) {
+        if (a.location && a.location.trim()) {
+          const loc = a.location.trim();
+          locMap.set(loc, (locMap.get(loc) || 0) + 1);
+        }
+      }
+    }
+    return Array.from(locMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [trip.days]);
+
+  const availablePasses = useMemo(() => {
+    return (trip.passes || []).map((p: any) => p.name || p.passName).filter(Boolean);
+  }, [trip.passes]);
 
   const startStr = new Date(trip.startDate).toLocaleDateString(dateLocale, {
     day: "numeric",
@@ -293,6 +312,9 @@ export default function TripOverviewClient({
               tripId={trip.id}
               isOwner={isOwner}
               index={idx}
+              exchangeRate={trip.exchangeRate}
+              availablePasses={availablePasses}
+              previousLocations={previousLocations}
             />
           ))}
         </div>

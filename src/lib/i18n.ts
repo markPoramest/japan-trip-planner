@@ -82,6 +82,19 @@ export const translations = {
     saveChanges: "Save Changes",
     addActivity: "Add Activity",
     deleteConfirm: "Remove this stop/activity?",
+    tripLocationsTitle: "Locations in this trip",
+    noMatchingLocations: "No matching previous location (keep typing to add new)",
+    fuzzySearchTip: "Fuzzy search · Enter or click to autofill",
+    viewPreviousLocations: "Browse previous locations",
+    batchAddActivities: "Batch Add Activities",
+    batchAddDesc: "Add multiple stops and activities for this day at once",
+    saveAndAddAnother: "Save & Add Another",
+    saveAllStops: "Save All Activities",
+    addAnotherStop: "+ Add Another Stop",
+    stopNumber: "Stop",
+    removeStop: "Remove this stop",
+    totalEstimatedCost: "Total Estimated Cost",
+    noStopsAdded: "Please add at least one stop with a location or activity description.",
 
     // Bookings & Summary
     hotelsPassesBudgets: "Cost Handle (Hotels, Passes, Flights & Budgets)",
@@ -184,7 +197,7 @@ export const translations = {
     reduceTripWarningTitle: "Reduce Trip Duration?",
     reduceTripWarningText: "Shortening the trip from {orig} days to {newDays} days will permanently delete the last {diff} day(s) (Day {startDel}{endDel}) and any activities scheduled on them. Do you want to proceed?",
     confirmReduceDays: "Confirm & Save",
-    
+
     // Settings Kebab & Auth
     settings: "Settings",
     appearance: "Appearance",
@@ -315,6 +328,19 @@ export const translations = {
     saveChanges: "บันทึกการแก้ไข",
     addActivity: "เพิ่มกิจกรรม",
     deleteConfirm: "ต้องการลบจุดแวะ/กิจกรรมนี้หรือไม่?",
+    tripLocationsTitle: "สถานที่ที่เคยใช้ในทริปนี้",
+    noMatchingLocations: "ไม่พบสถานที่ที่เคยใช้ (พิมพ์ชื่อใหม่ได้เลย)",
+    fuzzySearchTip: "ค้นหาคำใกล้เคียง · กด Enter หรือคลิกเพื่อใส่ข้อความอัตโนมัติ",
+    viewPreviousLocations: "ดูสถานที่ที่เคยใช้",
+    batchAddActivities: "เพิ่มหลายกิจกรรมพร้อมกัน",
+    batchAddDesc: "เพิ่มสถานที่และกิจกรรมหลายจุดในวันเดียวกันได้พร้อมกัน",
+    saveAndAddAnother: "บันทึกแล้วเพิ่มต่อ",
+    saveAllStops: "บันทึกกิจกรรมทั้งหมด",
+    addAnotherStop: "+ เพิ่มจุดแวะถัดไป",
+    stopNumber: "จุดแวะที่",
+    removeStop: "ลบจุดนี้",
+    totalEstimatedCost: "ประมาณการค่าใช้จ่ายรวม",
+    noStopsAdded: "กรุณาระบุสถานที่หรือรายละเอียดกิจกรรมอย่างน้อย 1 จุดแวะ",
 
     // Bookings & Summary
     hotelsPassesBudgets: "จัดการค่าใช้จ่าย (โรงแรม, พาส/รถเช่า/ตั๋ว, เที่ยวบิน และงบประมาณ)",

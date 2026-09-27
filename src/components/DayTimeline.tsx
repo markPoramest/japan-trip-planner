@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { formatJPY, formatTHB } from "@/lib/utils";
 import { deleteActivity, updateTripDay } from "@/lib/actions";
 import ActivityFormModal from "./ActivityFormModal";
+import BatchActivityModal from "./BatchActivityModal";
 import {
   Clock, MapPin, CreditCard, Train, ExternalLink,
-  Plus, Edit2, Trash2, Banknote, DollarSign, AlertCircle, Check, X, Loader2, Globe,
+  Plus, Edit2, Trash2, Banknote, DollarSign, AlertCircle, Check, X, Loader2, Globe
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -34,6 +35,7 @@ interface DayTimelineProps {
   activities: Activity[];
   availablePasses?: string[];
   exchangeRate?: number;
+  previousLocations?: { name: string; count?: number }[] | string[];
 }
 
 export default function DayTimeline({
@@ -47,10 +49,12 @@ export default function DayTimeline({
   activities,
   availablePasses = [],
   exchangeRate = 0.24,
+  previousLocations = [],
 }: DayTimelineProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
   const [modalOpen, setModalOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -189,7 +193,7 @@ export default function DayTimeline({
 
           {isOwner ? (
             <button
-              onClick={() => { setEditingActivity(null); setModalOpen(true); }}
+              onClick={() => setBatchModalOpen(true)}
               className="self-start md:self-auto px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-bold shadow-accent flex items-center gap-2 transition-all hover:scale-105 cursor-pointer flex-shrink-0"
             >
               <Plus className="w-4 h-4" /> {t("addStopActivity")}
@@ -236,10 +240,23 @@ export default function DayTimeline({
       {/* Timeline Activities List */}
       <div className="space-y-4">
         {activities.length === 0 ? (
-          <div data-aos="fade-up" className="bg-bg-card border border-border border-dashed rounded-3xl p-12 text-center text-text-muted shadow-card">
-            <AlertCircle className="w-8 h-8 text-text-faint mx-auto mb-2" />
-            <p className="font-semibold text-text-secondary">{t("noActivitiesTitle")}</p>
-            <p className="text-xs text-text-muted mt-1">{t("noActivitiesSubtitle")}</p>
+          <div data-aos="fade-up" className="bg-bg-card border border-border border-dashed rounded-3xl p-10 text-center text-text-muted shadow-card space-y-4">
+            <AlertCircle className="w-8 h-8 text-text-faint mx-auto" />
+            <div>
+              <p className="font-semibold text-text-secondary">{t("noActivitiesTitle")}</p>
+              <p className="text-xs text-text-muted mt-1">{t("noActivitiesSubtitle")}</p>
+            </div>
+            {isOwner && (
+              <div className="flex items-center justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBatchModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold hover:bg-accent-light transition-all flex items-center gap-1.5 cursor-pointer shadow-accent"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t("addStopActivity")}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           activities.map((activity, idx) => {
@@ -340,6 +357,19 @@ export default function DayTimeline({
         exchangeRate={exchangeRate}
         activity={editingActivity}
         availablePasses={availablePasses}
+        previousLocations={previousLocations}
+      />
+
+      {/* Batch Activity Modal */}
+      <BatchActivityModal
+        isOpen={batchModalOpen}
+        onClose={() => setBatchModalOpen(false)}
+        dayId={dayId}
+        dayNumber={dayNumber}
+        dayTitle={currentTitle}
+        exchangeRate={exchangeRate}
+        availablePasses={availablePasses}
+        previousLocations={previousLocations}
       />
     </div>
   );

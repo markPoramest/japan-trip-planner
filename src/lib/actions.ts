@@ -416,6 +416,51 @@ export async function createActivity(dayId: string, data: {
   return newActivity;
 }
 
+export async function createActivitiesBatch(
+  dayId: string,
+  items: Array<{
+    time: string;
+    location: string;
+    activity: string;
+    cost: number;
+    isIcCard: boolean;
+    usingPass?: string;
+    remark?: string;
+  }>
+) {
+  await verifyDayOwnership(dayId);
+  if (!items || items.length === 0) return { success: true, count: 0 };
+
+  const day = await db.tripDay.findUnique({
+    where: { id: dayId },
+    select: { slug: true, tripId: true },
+  });
+
+  const existingCount = await db.dayActivity.count({ where: { dayId } });
+
+  const activitiesData = items.map((item, index) => ({
+    dayId,
+    time: item.time || "09:00",
+    location: item.location || "",
+    activity: item.activity || "",
+    cost: Number(item.cost) || 0,
+    isIcCard: Boolean(item.isIcCard),
+    usingPass: item.usingPass || null,
+    remark: item.remark || null,
+    sortOrder: existingCount + index,
+  }));
+
+  await db.dayActivity.createMany({
+    data: activitiesData,
+  });
+
+  if (day) {
+    revalidatePath(`/trips/${day.tripId}/days/${day.slug}`);
+    revalidatePath(`/trips/${day.tripId}`);
+  }
+  return { success: true, count: items.length };
+}
+
 export async function updateActivity(id: string, data: {
   time?: string;
   location?: string;
@@ -574,3 +619,44 @@ export async function deleteBudgetWallet(id: string, tripId: string) {
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
 }
+
+export async function getTripLocations(tripId: string): Promise<{ name: string; count: number }[]> {
+  if (!tripId) return [];
+
+  const days = await db.tripDay.findMany({
+    where: { tripId },
+    include: {
+      activities: {
+        select: { location: true },
+      },
+    },
+  });
+
+  const hotels = await db.hotelBooking.findMany({
+    where: { tripId },
+    select: { name: true },
+  });
+
+  const locationCounts = new Map<string, number>();
+
+  for (const d of days) {
+    for (const a of d.activities) {
+      const loc = a.location?.trim();
+      if (loc && loc.toLowerCase() !== "location") {
+        locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
+      }
+    }
+  }
+
+  for (const h of hotels) {
+    const hName = h.name?.trim();
+    if (hName && !locationCounts.has(hName)) {
+      locationCounts.set(hName, 1);
+    }
+  }
+
+  return Array.from(locationCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
+}
+
