@@ -309,6 +309,13 @@ export async function updateTripDay(
     data: updateData,
   });
 
+  if (data.title) {
+    await db.dayPlan.updateMany({
+      where: { dayId, isMain: true },
+      data: { title: data.title },
+    });
+  }
+
   return updated;
 }
 
@@ -485,7 +492,7 @@ export async function swapMainPlan(
   const currentMain = day.plans.find((p) => p.isMain);
 
   let newSlug = day.slug;
-  let finalDayTitle = day.title;
+  let finalDayTitle = (newDayTitle?.trim() || targetPlan.title).trim();
 
   await db.$transaction(async (tx) => {
     if (currentMain) {
@@ -496,11 +503,10 @@ export async function swapMainPlan(
     }
     await tx.dayPlan.update({
       where: { id: targetPlan.id },
-      data: { isMain: true },
+      data: { isMain: true, title: finalDayTitle },
     });
 
-    if (newDayTitle && newDayTitle.trim() && newDayTitle.trim() !== day.title) {
-      finalDayTitle = newDayTitle.trim();
+    if (finalDayTitle && finalDayTitle !== day.title) {
       await tx.tripDay.update({
         where: { id: dayId },
         data: {
@@ -586,10 +592,14 @@ export async function createActivity(dayId: string, data: {
     if (mainPlan) {
       targetPlanId = mainPlan.id;
     } else {
+      const day = await db.tripDay.findUnique({
+        where: { id: dayId },
+        select: { title: true },
+      });
       const fallbackPlan = await db.dayPlan.create({
         data: {
           dayId,
-          title: "Plan A (Main)",
+          title: day?.title || "Main Plan",
           tag: "main",
           isMain: true,
           sortOrder: 0,
@@ -642,7 +652,7 @@ export async function createActivitiesBatch(
 
   const day = await db.tripDay.findUnique({
     where: { id: dayId },
-    select: { slug: true, tripId: true },
+    select: { slug: true, tripId: true, title: true },
   });
 
   let targetPlanId = planId;
@@ -657,7 +667,7 @@ export async function createActivitiesBatch(
       const fallbackPlan = await db.dayPlan.create({
         data: {
           dayId,
-          title: "Plan A (Main)",
+          title: day?.title || "Main Plan",
           tag: "main",
           isMain: true,
           sortOrder: 0,
@@ -716,7 +726,7 @@ export async function saveActivitiesBatch(
 
   const day = await db.tripDay.findUnique({
     where: { id: dayId },
-    select: { slug: true, tripId: true },
+    select: { slug: true, tripId: true, title: true },
   });
   if (!day) throw new Error("Day not found");
 
@@ -732,7 +742,7 @@ export async function saveActivitiesBatch(
       const fallbackPlan = await db.dayPlan.create({
         data: {
           dayId,
-          title: "Plan A (Main)",
+          title: day.title || "Main Plan",
           tag: "main",
           isMain: true,
           sortOrder: 0,
@@ -846,13 +856,28 @@ export async function deleteActivity(id: string) {
 // ─────────────────────────────────────────────
 
 export async function updateHotel(id: string, data: {
-  name?: string; dateRange?: string; costThb?: number; costJpy?: number; notes?: string;
+  name?: string;
+  dateRange?: string;
+  checkIn?: string | Date | null;
+  checkOut?: string | Date | null;
+  costThb?: number;
+  costJpy?: number;
+  notes?: string;
 }) {
   const existing = await db.hotelBooking.findUnique({ where: { id }, select: { tripId: true } });
   if (!existing) throw new Error("Hotel not found");
   await verifyTripOwnership(existing.tripId);
 
-  const hotel = await db.hotelBooking.update({ where: { id }, data });
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.dateRange !== undefined) updateData.dateRange = data.dateRange;
+  if (data.checkIn !== undefined) updateData.checkIn = data.checkIn ? new Date(data.checkIn) : null;
+  if (data.checkOut !== undefined) updateData.checkOut = data.checkOut ? new Date(data.checkOut) : null;
+  if (data.costThb !== undefined) updateData.costThb = data.costThb;
+  if (data.costJpy !== undefined) updateData.costJpy = data.costJpy;
+  if (data.notes !== undefined) updateData.notes = data.notes;
+
+  const hotel = await db.hotelBooking.update({ where: { id }, data: updateData });
   revalidatePath(`/trips/${hotel.tripId}/bookings`);
   revalidatePath(`/trips/${hotel.tripId}`);
   return hotel;
@@ -889,11 +914,28 @@ export async function updateBudget(id: string, data: {
 // ─────────────────────────────────────────────
 
 export async function createHotel(tripId: string, data: {
-  name: string; dateRange: string; costThb?: number; costJpy?: number; notes?: string;
+  name: string;
+  dateRange: string;
+  checkIn?: string | Date | null;
+  checkOut?: string | Date | null;
+  costThb?: number;
+  costJpy?: number;
+  notes?: string;
 }) {
   await verifyTripOwnership(tripId);
 
-  const hotel = await db.hotelBooking.create({ data: { tripId, ...data } });
+  const hotel = await db.hotelBooking.create({
+    data: {
+      tripId,
+      name: data.name,
+      dateRange: data.dateRange,
+      checkIn: data.checkIn ? new Date(data.checkIn) : null,
+      checkOut: data.checkOut ? new Date(data.checkOut) : null,
+      costThb: data.costThb,
+      costJpy: data.costJpy,
+      notes: data.notes,
+    },
+  });
   revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath(`/trips/${tripId}`);
   return hotel;

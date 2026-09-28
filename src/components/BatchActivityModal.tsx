@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { createActivitiesBatch, saveActivitiesBatch } from "@/lib/actions";
 import {
@@ -539,7 +539,9 @@ export default function BatchActivityModal({
         await createActivitiesBatch(dayId, itemsToSave, planId);
       }
 
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
       if (onSuccess) {
         onSuccess();
       }
@@ -957,9 +959,7 @@ export default function BatchActivityModal({
               )}
               <span>
                 {loading
-                  ? language === "th"
-                    ? "กำลังบันทึกทั้งหมด..."
-                    : "Saving all..."
+                  ? t("savingAllEllipsis")
                   : mode === "edit"
                   ? t("saveAllChanges")
                   : `${t("saveAllStops")} (${rows.filter((r) => r.location.trim() || r.activity.trim()).length})`}

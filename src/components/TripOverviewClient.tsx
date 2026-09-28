@@ -248,7 +248,7 @@ export default function TripOverviewClient({
             {!isOwner && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-surface border border-border text-[11px] font-semibold text-text-muted">
                 <Globe className="w-3 h-3 text-emerald-400" />
-                <span>{language === "th" ? "ทริปสาธารณะ (โหมดอ่านอย่างเดียว)" : "Public Trip (View Only)"}</span>
+                <span>{t("publicTripViewOnly")}</span>
               </span>
             )}
           </div>
@@ -307,7 +307,8 @@ export default function TripOverviewClient({
             let prevDayLastLocation: string | undefined = undefined;
             if (idx > 0) {
               const prevDay = trip.days[idx - 1];
-              const prevActs = prevDay?.activities || [];
+              const prevMainPlan = prevDay?.plans?.find((p: any) => p.isMain) || prevDay?.plans?.[0];
+              const prevActs = prevMainPlan ? prevMainPlan.activities : (prevDay?.activities || []);
               if (prevActs.length > 0) {
                 prevDayLastLocation = prevActs[prevActs.length - 1]?.location;
               }

@@ -65,6 +65,8 @@ export default async function ExportPage({ params }: Props) {
       id: h.id,
       name: h.name,
       dateRange: h.dateRange,
+      checkIn: h.checkIn ? h.checkIn.toISOString() : null,
+      checkOut: h.checkOut ? h.checkOut.toISOString() : null,
       notes: h.notes,
     })),
     passes: trip.passes.map((p) => ({

@@ -7,11 +7,14 @@ import { Hotel, Calendar, CheckCircle2, Plus, Edit2, Trash2 } from "lucide-react
 import { deleteHotel } from "@/lib/actions";
 import HotelModal from "@/components/HotelModal";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatHotelStay } from "@/lib/hotelDates";
 
 interface HotelBooking {
   id: string;
   name: string;
   dateRange: string;
+  checkIn?: string | Date | null;
+  checkOut?: string | Date | null;
   costThb: number | null;
   costJpy: number | null;
   bookingRef: string | null;
@@ -32,7 +35,7 @@ export default function HotelTable({
   tripEndDate?: string;
 }) {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState<HotelBooking | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -138,7 +141,7 @@ export default function HotelTable({
                     <td className="py-3.5 text-text-secondary font-medium">
                       <div className="flex items-center gap-1 text-text-muted">
                         <Calendar className="w-3 h-3 text-accent" />
-                        <span>{hotel.dateRange}</span>
+                        <span>{formatHotelStay(hotel, language)}</span>
                       </div>
                     </td>
                     <td className="py-3.5 text-right font-mono font-bold text-text-primary">

@@ -8,11 +8,14 @@ import { X, Hotel, Calendar, FileText, ArrowRightLeft, Loader2 } from "lucide-re
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
 import DateRangePicker from "@/components/DateRangePicker";
+import { parseHotelDates, formatHotelStay } from "@/lib/hotelDates";
 
 interface HotelBooking {
   id: string;
   name: string;
   dateRange: string;
+  checkIn?: string | Date | null;
+  checkOut?: string | Date | null;
   costThb: number | null;
   costJpy: number | null;
   bookingRef: string | null;
@@ -64,11 +67,11 @@ export default function HotelModal({
       setName(hotel.name || "");
       setDateRange(hotel.dateRange || "");
 
-      // Try to parse ISO dates if stored or present
-      const isoMatches = (hotel.dateRange || "").match(/\d{4}-\d{2}-\d{2}/g);
-      if (isoMatches && isoMatches.length >= 2) {
-        setStartDate(isoMatches[0]);
-        setEndDate(isoMatches[1]);
+      const tripYear = minDate ? parseInt(minDate.split("-")[0], 10) : new Date().getFullYear();
+      const parsed = parseHotelDates(hotel, tripYear);
+      if (parsed) {
+        setStartDate(parsed.startDate);
+        setEndDate(parsed.endDate);
       } else {
         setStartDate(minDate || "");
         setEndDate(maxDate || "");
@@ -98,10 +101,8 @@ export default function HotelModal({
       setEndDate(initialEnd);
 
       if (initialStart && initialEnd) {
-        const s = new Date(initialStart + "T00:00:00");
-        const e = new Date(initialEnd + "T00:00:00");
-        const nights = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
-        const dateText = `${s.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} - ${e.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} (${nights} ${nights > 1 ? "nights" : "night"})`;
+        const tripYear = minDate ? parseInt(minDate.split("-")[0], 10) : new Date().getFullYear();
+        const dateText = formatHotelStay({ checkIn: initialStart, checkOut: initialEnd }, "en", { defaultYear: tripYear });
         setDateRange(dateText);
       } else {
         setDateRange("");
@@ -124,17 +125,20 @@ export default function HotelModal({
     setEndDate(end);
 
     if (start && end) {
-      const s = new Date(start + "T00:00:00");
-      const e = new Date(end + "T00:00:00");
-      const nights = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
-      const dateText = `${s.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} - ${e.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} (${nights} ${nights > 1 ? "nights" : "night"})`;
+      const tripYear = minDate ? parseInt(minDate.split("-")[0], 10) : new Date().getFullYear();
+      const dateText = formatHotelStay({ checkIn: start, checkOut: end }, "en", { defaultYear: tripYear });
       setDateRange(dateText);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalDateRange = dateRange.trim() || (startDate && endDate ? `${startDate} to ${endDate}` : "");
+    const tripYear = minDate ? parseInt(minDate.split("-")[0], 10) : new Date().getFullYear();
+    const finalDateRange =
+      (startDate && endDate
+        ? formatHotelStay({ checkIn: startDate, checkOut: endDate }, "en", { defaultYear: tripYear })
+        : "") || dateRange.trim();
+
     if (!name.trim() || !finalDateRange) {
       alert("Please enter hotel name and select check-in / check-out dates.");
       return;
@@ -142,22 +146,20 @@ export default function HotelModal({
     setLoading(true);
 
     try {
+      const payload = {
+        name: name.trim(),
+        dateRange: finalDateRange,
+        checkIn: startDate ? new Date(`${startDate}T00:00:00.000Z`) : null,
+        checkOut: endDate ? new Date(`${endDate}T00:00:00.000Z`) : null,
+        costThb: thbVal || 0,
+        costJpy: jpyVal || 0,
+        notes: notes.trim() || undefined,
+      };
+
       if (isEditing && hotel) {
-        await updateHotel(hotel.id, {
-          name: name.trim(),
-          dateRange: finalDateRange,
-          costThb: thbVal || 0,
-          costJpy: jpyVal || 0,
-          notes: notes.trim() || undefined,
-        });
+        await updateHotel(hotel.id, payload);
       } else {
-        await createHotel(tripId, {
-          name: name.trim(),
-          dateRange: finalDateRange,
-          costThb: thbVal || 0,
-          costJpy: jpyVal || 0,
-          notes: notes.trim() || undefined,
-        });
+        await createHotel(tripId, payload);
       }
       router.refresh();
       onClose();
@@ -212,7 +214,7 @@ export default function HotelModal({
           <div>
             <DateRangePicker
               mode="hotel"
-              label={language === "th" ? "วันที่เข้าพัก (เช็คอิน - เช็คเอาท์)" : "Stay Dates (Check-in - Check-out)"}
+              label={t("stayDatesWithCheckInOut")}
               startDate={startDate}
               endDate={endDate}
               minDate={minDate}
@@ -225,7 +227,7 @@ export default function HotelModal({
           <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                {language === "th" ? "เลือกสกุลเงิน & ค่าที่พัก" : "Currency & Hotel Cost"}
+                {t("currencyAndHotelCost")}
               </label>
               <select
                 value={inputCurrency}
@@ -252,7 +254,7 @@ export default function HotelModal({
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
                 <span className="text-text-muted flex items-center gap-1">
                   <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{language === "th" ? "เทียบเท่า" : "Equivalent to"}:</span>
+                  <span>{t("equivalentTo")}:</span>
                 </span>
                 <div className="font-mono font-bold text-right">
                   <span className="text-accent">{formatTHB(thbVal)}</span>
@@ -293,7 +295,7 @@ export default function HotelModal({
               className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
             >
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>{loading ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : isEditing ? t("saveChanges") : t("addHotel")}</span>
+              <span>{loading ? t("savingEllipsis") : isEditing ? t("saveChanges") : t("addHotel")}</span>
             </button>
           </div>
         </form>

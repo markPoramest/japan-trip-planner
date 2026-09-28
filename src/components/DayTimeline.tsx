@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -69,6 +69,45 @@ function getPlanIcon(tag: string | null | undefined, isMain: boolean) {
   return "📋";
 }
 
+function normalizePlanList(
+  rawPlans: DayPlanData[] | undefined,
+  fallbackTitle: string,
+  fallbackActivities: Activity[] = []
+): DayPlanData[] {
+  const baseList: DayPlanData[] = (
+    rawPlans && rawPlans.length > 0
+      ? rawPlans
+      : [
+          {
+            id: "default-main",
+            title: fallbackTitle || "Main Plan",
+            tag: "main",
+            isMain: true,
+            sortOrder: 0,
+            notes: null,
+            activities: fallbackActivities,
+          },
+        ]
+  );
+
+  return baseList.map((p) => {
+    let title = p.title;
+    if (p.isMain) {
+      if (/^plan\s*a\b/i.test(title) || title.toLowerCase() === "(main)" || title.toLowerCase() === "main") {
+        title = title.replace(/^plan\s*a\s*(\((main|หลัก)\))?\s*[-:·]?\s*/i, "").trim();
+        if (!title || title.toLowerCase() === "(main)" || title.toLowerCase() === "main") {
+          title = fallbackTitle || "Main Plan";
+        }
+      }
+    } else {
+      if (/^plan\s*a\b/i.test(title)) {
+        title = title.replace(/^plan\s*a\s*[-:·]?\s*/i, "").trim() || title;
+      }
+    }
+    return { ...p, title };
+  });
+}
+
 export default function DayTimeline({
   tripId,
   isOwner = false,
@@ -102,31 +141,24 @@ export default function DayTimeline({
   const [titleInput, setTitleInput] = useState(dayTitle);
   const [savingTitle, setSavingTitle] = useState(false);
 
-  // Plans normalization
-  const normalizedPlans: DayPlanData[] =
-    plans && plans.length > 0
-      ? plans
-      : [
-        {
-          id: "default-main",
-          title: "Plan A (Main)",
-          tag: "main",
-          isMain: true,
-          sortOrder: 0,
-          notes: null,
-          activities: activities,
-        },
-      ];
+  // Local reactive plans state for 0ms optimistic updates
+  const [localPlans, setLocalPlans] = useState<DayPlanData[]>(() =>
+    normalizePlanList(plans, dayTitle, activities)
+  );
 
-  const mainPlan = normalizedPlans.find((p) => p.isMain) || normalizedPlans[0];
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan.id);
+  useEffect(() => {
+    setLocalPlans(normalizePlanList(plans, currentTitle, activities));
+  }, [plans, currentTitle, activities]);
+
+  const mainPlan = localPlans.find((p) => p.isMain) || localPlans[0];
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(mainPlan?.id || "default-main");
 
   // Fallback if selected plan is not found in latest plans
   const activePlan =
-    normalizedPlans.find((p) => p.id === selectedPlanId) || mainPlan;
+    localPlans.find((p) => p.id === selectedPlanId) || mainPlan;
   const currentActivities = activePlan?.activities || [];
 
-  const substitutePlans = normalizedPlans.filter((p) => !p.isMain);
+  const substitutePlans = localPlans.filter((p) => !p.isMain);
   const substituteCount = substitutePlans.length;
 
   // Plan Creation Modal State
@@ -154,8 +186,6 @@ export default function DayTimeline({
   // Swap Plan Modal State
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [planToSwap, setPlanToSwap] = useState<DayPlanData | null>(null);
-  const [shouldUpdateDayTitle, setShouldUpdateDayTitle] = useState(true);
-  const [newDayTitleInput, setNewDayTitleInput] = useState("");
 
   // Delete Plan Modal State
   const [deletePlanModalOpen, setDeletePlanModalOpen] = useState(false);
@@ -217,7 +247,7 @@ export default function DayTimeline({
         if (updated?.slug) {
           window.history.replaceState(null, "", `/trips/${tripId}/days/${updated.slug}`);
         }
-        showToast(language === "th" ? "บันทึกชื่อวันเรียบร้อย" : "Day title updated");
+        showToast(t("dayTitleUpdated"));
       })
       .catch((err) => {
         console.error(err);
@@ -239,7 +269,7 @@ export default function DayTimeline({
       return;
     }
     const letters = ["B", "C", "D"];
-    const existingTitles = normalizedPlans.map((p) => p.title.toLowerCase());
+    const existingTitles = localPlans.map((p) => p.title.toLowerCase());
     let nextLetter = letters[substituteCount] || "B";
     for (const l of letters) {
       if (!existingTitles.some((tit) => tit.includes(`plan ${l.toLowerCase()}`))) {
@@ -260,7 +290,7 @@ export default function DayTimeline({
   function handleSelectPreset(presetTag: string) {
     setNewPlanTag(presetTag);
     const letters = ["B", "C", "D"];
-    const existingTitles = normalizedPlans.map((p) => p.title.toLowerCase());
+    const existingTitles = localPlans.map((p) => p.title.toLowerCase());
     let nextLetter = letters[substituteCount] || "B";
     for (const l of letters) {
       if (!existingTitles.some((tit) => tit.includes(`plan ${l.toLowerCase()}`))) {
@@ -299,11 +329,11 @@ export default function DayTimeline({
       setSelectedPlanId(newPlan.id);
       setCreatePlanModalOpen(false);
       showToast(
-        language === "th"
-          ? `สร้างแผน "${newPlanTitle.trim()}" สำเร็จ`
-          : `Created substitute plan "${newPlanTitle.trim()}"`
+        t("substitutePlanCreated", { title: newPlanTitle.trim() })
       );
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err: any) {
       console.error(err);
       showToast(err?.message || "Failed to create substitute plan", "error");
@@ -316,40 +346,56 @@ export default function DayTimeline({
   function handleOpenSwapModal(plan: DayPlanData) {
     if (!isOwner || plan.isMain) return;
     setPlanToSwap(plan);
-    setNewDayTitleInput(plan.title);
-    setShouldUpdateDayTitle(false);
     setSwapModalOpen(true);
   }
 
-  // Confirm Swap Plan to Main (with optional Day Title change)
+  // Confirm Swap Plan to Main with Loading Page Overlay
   async function handleConfirmSwap() {
     if (!planToSwap || !isOwner) return;
 
+    const previousPlans = localPlans;
+    const previousTitle = currentTitle;
+    const targetPlanId = planToSwap.id;
+    const targetTitle = planToSwap.title;
+
+    // Close the swap modal and activate full-screen loading overlay
+    setSwapModalOpen(false);
     setIsSwapping(true);
+
     try {
-      const res = await swapMainPlan(
-        dayId,
-        planToSwap.id,
-        shouldUpdateDayTitle ? newDayTitleInput.trim() : undefined
-      );
+      await swapMainPlan(dayId, targetPlanId);
 
-      if (res && typeof res === "object") {
-        if (res.dayTitle) {
-          setCurrentTitle(res.dayTitle);
-          setTitleInput(res.dayTitle);
-        }
-      }
-
-      setSelectedPlanId(planToSwap.id);
-      setSwapModalOpen(false);
-      showToast(
-        language === "th"
-          ? `สลับ "${planToSwap.title}" เป็นแผนหลักเรียบร้อยแล้ว!`
-          : `Swapped "${planToSwap.title}" to Main Plan!`
+      // Update state to match new main plan
+      setLocalPlans((prev) =>
+        prev.map((p) => {
+          if (p.id === targetPlanId) {
+            return { ...p, isMain: true, title: targetTitle };
+          }
+          if (p.isMain) {
+            return { ...p, isMain: false };
+          }
+          return p;
+        })
       );
-      router.refresh();
+      setCurrentTitle(targetTitle);
+      setTitleInput(targetTitle);
+      setSelectedPlanId(targetPlanId);
+
+      startTransition(() => {
+        router.refresh();
+      });
+
+      // Brief delay to allow new state and render to settle cleanly
+      await new Promise((r) => setTimeout(r, 600));
+
+      showToast(t("planSwappedToMain", { title: targetTitle }));
     } catch (err: any) {
       console.error(err);
+      // Rollback on failure
+      setLocalPlans(previousPlans);
+      setCurrentTitle(previousTitle);
+      setTitleInput(previousTitle);
+      setSelectedPlanId(previousPlans.find((p) => p.isMain)?.id || targetPlanId);
       showToast(err?.message || "Failed to swap plans", "error");
     } finally {
       setIsSwapping(false);
@@ -363,46 +409,81 @@ export default function DayTimeline({
     setDeletePlanModalOpen(true);
   }
 
-  // Confirm Delete Plan
+  // Confirm Delete Plan (instant optimistic update)
   async function handleConfirmDeletePlan() {
     if (!planToDelete || !isOwner) return;
 
+    const previousPlans = localPlans;
+    const deletedId = planToDelete.id;
+    const deletedTitle = planToDelete.title;
+
+    // 1. Instant optimistic update
+    setLocalPlans((prev) => prev.filter((p) => p.id !== deletedId));
+    setSelectedPlanId(mainPlan.id);
+    setDeletePlanModalOpen(false);
+    showToast(
+      t("substitutePlanDeleted", { title: deletedTitle })
+    );
+
+    // 2. Background server sync
     setIsDeletingPlan(true);
     try {
-      const deletedTitle = planToDelete.title;
-      await deleteSubstitutePlan(planToDelete.id);
-      setSelectedPlanId(mainPlan.id);
-      setDeletePlanModalOpen(false);
-      showToast(
-        language === "th"
-          ? `ลบแผน "${deletedTitle}" สำเร็จ`
-          : `Deleted plan "${deletedTitle}"`
-      );
-      router.refresh();
+      await deleteSubstitutePlan(deletedId);
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err: any) {
       console.error(err);
+      setLocalPlans(previousPlans);
       showToast(err?.message || "Failed to delete plan", "error");
     } finally {
       setIsDeletingPlan(false);
     }
   }
 
-  // Submit Edit Plan Metadata
+  // Submit Edit Plan Metadata (instant optimistic update)
   async function handleEditPlanSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingPlanData || !editingPlanData.title.trim()) return;
+
+    const previousPlans = localPlans;
+    const previousTitle = currentTitle;
+    const planId = editingPlanData.id;
+    const updatedTitle = editingPlanData.title.trim();
+    const updatedTag = editingPlanData.tag;
+    const updatedNotes = editingPlanData.notes.trim() || null;
+
+    // 1. Instant optimistic update
+    setLocalPlans((prev) =>
+      prev.map((p) =>
+        p.id === planId
+          ? { ...p, title: updatedTitle, tag: updatedTag, notes: updatedNotes }
+          : p
+      )
+    );
+    if (activePlan?.id === planId && activePlan.isMain) {
+      setCurrentTitle(updatedTitle);
+      setTitleInput(updatedTitle);
+    }
+    setEditPlanModalOpen(false);
+    showToast(t("planUpdatedSuccess"));
+
+    // 2. Background server sync
     setSavingPlanMeta(true);
     try {
-      await updateDayPlan(editingPlanData.id, {
-        title: editingPlanData.title.trim(),
-        tag: editingPlanData.tag,
-        notes: editingPlanData.notes.trim() || undefined,
+      await updateDayPlan(planId, {
+        title: updatedTitle,
+        tag: updatedTag,
+        notes: updatedNotes || undefined,
       });
-      setEditPlanModalOpen(false);
-      showToast(language === "th" ? "บันทึกข้อมูลแผนเรียบร้อย" : "Plan updated successfully");
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err: any) {
       console.error(err);
+      setLocalPlans(previousPlans);
+      setCurrentTitle(previousTitle);
+      setTitleInput(previousTitle);
       showToast(err?.message || "Failed to update plan", "error");
     } finally {
       setSavingPlanMeta(false);
@@ -513,12 +594,12 @@ export default function DayTimeline({
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-end text-xs">
             <span className="text-[11px] text-text-faint">
-              {substituteCount} / 3 {language === "th" ? t("substitutePlans") : (substituteCount === 1 ? t("substitutePlan") : t("substitutePlans")).toLowerCase()}
+              {substituteCount} / 3 {t(substituteCount === 1 ? "substitutePlan" : "substitutePlans")}
             </span>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1.5 sm:pb-0 scrollbar-none">
-            {normalizedPlans.map((plan) => {
+            {localPlans.map((plan) => {
               const isSelected = plan.id === activePlan.id;
               return (
                 <button
@@ -648,7 +729,6 @@ export default function DayTimeline({
         <div className="space-y-2 pt-4 border-t border-border">
           {/* Primary: Total Day Cost */}
           <div
-            data-aos="fade-up"
             className="bg-bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between"
           >
             <div>
@@ -667,8 +747,6 @@ export default function DayTimeline({
           <div className="grid grid-cols-2 gap-2">
             {/* IC Card */}
             <div
-              data-aos="fade-up"
-              data-aos-delay={80}
               className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sage/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
@@ -690,8 +768,6 @@ export default function DayTimeline({
 
             {/* Cash & Credit Card */}
             <div
-              data-aos="fade-up"
-              data-aos-delay={160}
               className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sand/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
             >
               <div className="min-w-0">
@@ -718,7 +794,6 @@ export default function DayTimeline({
       <div className="space-y-4">
         {currentActivities.length === 0 ? (
           <div
-            data-aos="fade-up"
             className="bg-bg-card border border-border border-dashed rounded-3xl p-10 text-center text-text-muted shadow-card space-y-4"
           >
             <AlertCircle className="w-8 h-8 text-text-faint mx-auto" />
@@ -753,8 +828,6 @@ export default function DayTimeline({
             return (
               <div
                 key={activity.id}
-                data-aos="fade-up"
-                data-aos-delay={(idx % 6) * 60}
                 className="bg-bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-accent/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-card group"
               >
                 {/* Time & Activity Details */}
@@ -826,7 +899,11 @@ export default function DayTimeline({
         onClose={() => setBatchModalOpen(false)}
         dayId={dayId}
         dayNumber={dayNumber}
-        dayTitle={`${currentTitle} - ${activePlan.title}`}
+        dayTitle={
+          activePlan.isMain || activePlan.title === currentTitle
+            ? currentTitle
+            : `${currentTitle} - ${activePlan.title}`
+        }
         exchangeRate={exchangeRate}
         availablePasses={availablePasses}
         previousLocations={previousLocations}
@@ -1041,6 +1118,38 @@ export default function DayTimeline({
           </div>
         </div>
       )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          LOADING OVERLAY: DISPLAYED WHILE SWAPPING MAIN PLAN
+      ───────────────────────────────────────────────────────────── */}
+      {isSwapping && mounted && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-bg-card border border-border rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-2xl bg-accent/20 animate-ping opacity-75" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent to-amber-500 text-white flex items-center justify-center shadow-lg shadow-accent/30 relative z-10">
+                <ArrowRightLeft className="w-8 h-8 animate-pulse" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-text-primary">
+                {t("swappingPlanLoadingTitle")}
+              </h3>
+              <p className="text-xs text-text-muted leading-relaxed">
+                {t("swappingPlanLoadingSubtitle")}
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center gap-2 text-xs font-bold text-accent">
+              <Loader2 className="w-4 h-4 animate-spin text-accent" />
+              <span>{t("pleaseWaitMoment")}</span>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* ─────────────────────────────────────────────────────────────
           MODAL: SWAP PLAN TO MAIN WITH DAY TITLE CHANGE OPTION
       ───────────────────────────────────────────────────────────── */}
@@ -1066,7 +1175,7 @@ export default function DayTimeline({
               <div className="bg-bg-surface/80 border border-border rounded-2xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-text-muted font-medium">
-                    {language === "th" ? "แผนที่จะเปลี่ยนเป็นแผนหลัก:" : "New Main Plan:"}
+                    {t("newMainPlanLabel")}
                   </span>
                   <span className="font-bold text-accent flex items-center gap-1">
                     <span>{getPlanIcon(planToSwap.tag, false)}</span>
@@ -1075,11 +1184,10 @@ export default function DayTimeline({
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-border/60">
                   <span className="text-text-muted font-medium">
-                    {language === "th" ? "แผนหลักเดิมจะกลายเป็น:" : "Current Main becomes:"}
+                    {t("dayTitleWillBecome")}
                   </span>
-                  <span className="font-medium text-text-secondary flex items-center gap-1">
-                    <span>📋</span>
-                    <span>{mainPlan.title}</span>
+                  <span className="font-bold text-text-primary">
+                    "{planToSwap.title}"
                   </span>
                 </div>
               </div>
@@ -1087,43 +1195,6 @@ export default function DayTimeline({
               <p className="text-text-muted text-[11px] leading-relaxed">
                 {t("swapPlanDesc")}
               </p>
-
-              {/* Day Title Option */}
-              <div className="bg-bg-surface/50 border border-border rounded-2xl p-3.5 space-y-3">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={shouldUpdateDayTitle}
-                    onChange={(e) => setShouldUpdateDayTitle(e.target.checked)}
-                    className="w-4 h-4 rounded text-accent bg-bg-base border-border focus:ring-accent accent-accent cursor-pointer"
-                  />
-                  <span className="font-semibold text-text-primary text-xs">
-                    {t("updateDayTitleWithPlan")}
-                  </span>
-                </label>
-
-                {shouldUpdateDayTitle ? (
-                  <div className="space-y-1.5 pl-6 animate-in fade-in duration-150">
-                    <label className="block text-[11px] text-text-muted font-medium">
-                      {t("newDayTitleLabel")}
-                    </label>
-                    <input
-                      type="text"
-                      required={shouldUpdateDayTitle}
-                      value={newDayTitleInput}
-                      onChange={(e) => setNewDayTitleInput(e.target.value)}
-                      placeholder="e.g. Fukuoka Shopping & Tenjin"
-                      className="w-full bg-bg-base border border-accent/60 rounded-xl px-3 py-2 text-text-primary text-xs focus:outline-none focus:border-accent"
-                    />
-                  </div>
-                ) : (
-                  <div className="pl-6 text-[11px] text-text-faint">
-                    {language === "th"
-                      ? `คงชื่อวันเดิมไว้: "${currentTitle}"`
-                      : `Keep current day title: "${currentTitle}"`}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
@@ -1137,7 +1208,7 @@ export default function DayTimeline({
               <button
                 type="button"
                 onClick={handleConfirmSwap}
-                disabled={isSwapping || (shouldUpdateDayTitle && !newDayTitleInput.trim())}
+                disabled={isSwapping}
                 className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold shadow-accent transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 {isSwapping ? (

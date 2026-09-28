@@ -549,7 +549,7 @@ export default function ActivityFormModal({
           <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                {language === "th" ? "เลือกสกุลเงิน & ค่าใช้จ่าย" : "Currency & Cost"}
+                {t("currencyAndCost")}
               </label>
               <div className="flex items-center gap-2">
                 <select
@@ -578,7 +578,7 @@ export default function ActivityFormModal({
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
                 <span className="text-text-muted flex items-center gap-1">
                   <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{language === "th" ? "เทียบเท่า" : "Equivalent to"}:</span>
+                  <span>{t("equivalentTo")}:</span>
                 </span>
                 <div className="font-mono font-bold text-right">
                   <span className="text-accent">{formatJPY(jpyVal)}</span>
@@ -682,7 +682,7 @@ export default function ActivityFormModal({
               className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
             >
               {loading && savingMode === "close" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>{loading && savingMode === "close" ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : isEditing ? t("saveChanges") : t("addActivity")}</span>
+              <span>{loading && savingMode === "close" ? t("savingEllipsis") : isEditing ? t("saveChanges") : t("addActivity")}</span>
             </button>
           </div>
         </form>

@@ -182,7 +182,7 @@ export default function ShareTripModal({
   // Copy Formatted Text Summary
   const handleCopySummaryText = async () => {
     const textSummary = `🌸 ${trip.title.toUpperCase()} 🇯🇵
-📅 ${startStr} – ${endStr} (${durationDays} ${language === "th" ? "วัน" : "Days"})
+📅 ${startStr} – ${endStr} (${durationDays} ${durationDays === 1 ? t("dayUnit") : t("daysUnit")})
 
 📍 ITINERARY (Day 1 - Day ${trip.days.length}):
 ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
@@ -273,7 +273,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
                 {t("shareModalTitle")}
               </h3>
               <p className="text-[11px] text-text-muted">
-                {trip.title} ({durationDays} {language === "th" ? "วัน" : "Days"})
+                {trip.title} ({durationDays} {durationDays === 1 ? t("dayUnit") : t("daysUnit")})
               </p>
             </div>
           </div>
@@ -299,7 +299,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
               }`}
             >
               <Instagram className="w-3.5 h-3.5" />
-              <span>{language === "th" ? "สตอรี่ Instagram (9:16)" : "Instagram Story (9:16)"}</span>
+              <span>{t("instagramStoryTab")}</span>
             </button>
             <button
               type="button"
@@ -311,7 +311,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>{language === "th" ? "ลิงก์แชร์ & สิทธิ์" : "Share Link & Privacy"}</span>
+              <span>{t("shareLinkPrivacyTab")}</span>
             </button>
           </div>
 
@@ -349,9 +349,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
                     <span>{t("shareStoryTitle")}</span>
                   </h4>
                   <p className="text-[11px] text-text-muted mt-0.5">
-                    {language === "th"
-                      ? "การ์ดสรุปทริปขนาด 9:16 พร้อมงบประมาณและตาราง Day 1 - Day " + durationDays
-                      : "9:16 Story card with summary cost and Day 1 - Day " + durationDays + " schedule"}
+                    {t("shareStoryDesc", { duration: durationDays })}
                   </p>
                 </div>
 
@@ -765,9 +763,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
 
                   {!isPublic && (
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-relaxed">
-                      ⚠️ {language === "th"
-                        ? "ทริปนี้เป็นแบบส่วนตัว หากส่งลิงก์ให้ผู้อื่น พวกเขาจะไม่สามารถดูทริปได้จนกว่าคุณจะเปลี่ยนเป็นสาธารณะ"
-                        : "This trip is private. Others opening the share link will not be able to view it until you switch visibility to Public."}
+                      ⚠️ {t("privateTripWarning")}
                     </div>
                   )}
                 </div>
@@ -776,7 +772,7 @@ ${trip.days.map((d) => `• Day ${d.dayNumber}: ${d.title}`).join("\n")}
               {/* Share URL Box */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider">
-                  {language === "th" ? "ลิงก์สำหรับแชร์ให้เพื่อน" : "Public Share Link"}
+                  {t("publicShareLink")}
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 px-3.5 py-2.5 bg-bg-base border border-border rounded-xl text-xs font-mono text-text-primary truncate select-all">

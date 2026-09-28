@@ -267,9 +267,9 @@ export default function DateRangePicker({
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
 
   const resolvedStartLabel =
-    startLabel || (mode === "hotel" ? (language === "th" ? "เช็คอิน" : "Check-in") : language === "th" ? "วันเริ่มต้น" : "Start Date");
+    startLabel || (mode === "hotel" ? t("checkIn") : t("startDate"));
   const resolvedEndLabel =
-    endLabel || (mode === "hotel" ? (language === "th" ? "เช็คเอาท์" : "Check-out") : language === "th" ? "วันสิ้นสุด" : "End Date");
+    endLabel || (mode === "hotel" ? t("checkOut") : t("endDate"));
 
   const startFormatted = startDate
     ? new Date(startDate + "T00:00:00").toLocaleDateString(dateLocale, {
@@ -278,7 +278,7 @@ export default function DateRangePicker({
         month: "short",
         year: "numeric",
       })
-    : language === "th" ? `เลือกวัน${resolvedStartLabel}` : `Select ${resolvedStartLabel.toLowerCase()}`;
+    : t("selectDatePrefix", { label: resolvedStartLabel });
 
   const endFormatted = endDate
     ? new Date(endDate + "T00:00:00").toLocaleDateString(dateLocale, {
@@ -287,7 +287,7 @@ export default function DateRangePicker({
         month: "short",
         year: "numeric",
       })
-    : language === "th" ? `เลือกวัน${resolvedEndLabel}` : `Select ${resolvedEndLabel.toLowerCase()}`;
+    : t("selectDatePrefix", { label: resolvedEndLabel });
 
   return (
     <div className="relative w-full" ref={containerRef}>
@@ -339,7 +339,7 @@ export default function DateRangePicker({
           <div className="px-3 py-1 rounded-full bg-accent/15 border border-accent/30 text-accent text-xs font-bold self-start sm:self-auto flex items-center gap-1">
             {mode === "hotel" ? (
               <span>
-                {durationNights} {durationNights > 1 ? (language === "th" ? "คืน" : "nights") : (language === "th" ? "คืน" : "night")}
+                {durationNights > 1 ? t("nightsCount", { count: durationNights }) : t("nightCount", { count: durationNights })}
               </span>
             ) : (
               <>
@@ -360,11 +360,11 @@ export default function DateRangePicker({
           <div className="flex items-center justify-between pb-2 border-b border-border/60">
             <div className="flex items-center gap-2 text-xs font-bold text-text-primary">
               <CalendarIcon className="w-4 h-4 text-accent" />
-              <span>{mode === "hotel" ? (language === "th" ? "เลือกวันเข้าพัก" : "Select Stay Dates") : language === "th" ? "เลือกช่วงวันเดินทาง" : "Select Travel Dates"}</span>
+              <span>{mode === "hotel" ? t("selectStayDates") : t("selectTravelDates")}</span>
               {tempStart && (
                 <span className="text-accent font-mono text-xs">
                   {mode === "hotel" ? (
-                    `(${durationNights} ${durationNights > 1 ? (language === "th" ? "คืน" : "nights") : (language === "th" ? "คืน" : "night")})`
+                    `(${durationNights > 1 ? t("nightsCount", { count: durationNights }) : t("nightCount", { count: durationNights })})`
                   ) : (
                     `(${durationDays} ${t("days")})`
                   )}
@@ -406,7 +406,7 @@ export default function DateRangePicker({
               className="text-xs text-text-muted hover:text-text-primary font-semibold flex items-center gap-1 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
-              <span>{language === "th" ? "ล้างวันที่" : "Reset"}</span>
+              <span>{t("reset")}</span>
             </button>
 
             <div className="flex items-center gap-2">

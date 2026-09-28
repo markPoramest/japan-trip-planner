@@ -205,21 +205,13 @@ export default function NewTripPage() {
             <div className="space-y-2">
               <h3 className="text-lg font-extrabold text-text-primary">
                 {loadingStage === "redirecting"
-                  ? language === "th"
-                    ? "สร้างทริปสำเร็จ! กำลังเปิดหน้าทริป..."
-                    : "Trip Ready! Opening dashboard..."
-                  : language === "th"
-                  ? "กำลังสร้างแผนการเดินทางของคุณ..."
-                  : "Creating Your Japan Trip Plan..."}
+                  ? t("tripReadyOpening")
+                  : t("creatingYourTripPlan")}
               </h3>
               <p className="text-xs text-text-muted leading-relaxed">
                 {loadingStage === "redirecting"
-                  ? language === "th"
-                    ? "พร้อมออกเดินทางแล้ว ✈️"
-                    : "Ready for departure ✈️"
-                  : language === "th"
-                  ? "กำลังบันทึกตารางรายวัน พาสการเดินทาง และคำนวณงบประมาณ..."
-                  : "Saving daily schedules, transit passes and budget matrices..."}
+                  ? t("readyForDeparture")
+                  : t("savingDailySchedules")}
               </p>
             </div>
 
@@ -470,7 +462,7 @@ export default function NewTripPage() {
 
             {days.length === 0 ? (
               <div className="p-6 text-center text-xs text-text-muted bg-bg-surface/50 rounded-2xl border border-dashed border-border">
-                {language === "th" ? "กรุณาเลือกช่วงวันเดินทางด้านบน เพื่อสร้างตารางรายวันอัตโนมัติ" : "Please select your trip dates above to auto-generate your daily schedule."}
+                {t("selectTripDatesToGenerateDays")}
               </div>
             ) : (
               <div className="space-y-3">

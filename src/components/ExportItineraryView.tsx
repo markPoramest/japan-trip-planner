@@ -3,6 +3,7 @@
 import { useLanguage } from "@/context/LanguageContext";
 import { Plane, Hotel, Train, Calendar, MapPin, Printer, ArrowLeft, Globe } from "lucide-react";
 import Link from "next/link";
+import { formatHotelStay } from "@/lib/hotelDates";
 
 interface Activity {
   id: string;
@@ -42,7 +43,7 @@ interface ExportItineraryProps {
     startDate: Date | string;
     endDate: Date | string;
     flights: { id: string; flightNo: string; route: string; notes?: string | null }[];
-    hotels: { id: string; name: string; dateRange: string; notes?: string | null }[];
+    hotels: { id: string; name: string; dateRange: string; checkIn?: Date | string | null; checkOut?: Date | string | null; notes?: string | null }[];
     passes: { id: string; name: string; validDays?: number | null }[];
     days: TripDay[];
   };
@@ -142,7 +143,7 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
                 {startStr} – {endStr}
               </div>
               <div className="text-[11px] text-gray-500 font-medium">
-                {durationDays} {language === "th" ? "วัน" : durationDays === 1 ? "Day" : "Days"}
+                {durationDays} {durationDays === 1 ? t("dayUnit") : t("daysUnit")}
               </div>
             </div>
           </div>
@@ -183,7 +184,7 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
                   {trip.hotels.map((h) => (
                     <div key={h.id} className="flex justify-between items-start text-[11px]">
                       <span className="font-semibold text-black">{h.name}</span>
-                      <span className="text-gray-600 font-mono text-[10px] ml-2 flex-shrink-0">{h.dateRange}</span>
+                      <span className="text-gray-600 font-mono text-[10px] ml-2 flex-shrink-0">{formatHotelStay(h, language)}</span>
                     </div>
                   ))}
                 </div>
@@ -199,7 +200,7 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
               </span>
               {trip.passes.map((p) => (
                 <span key={p.id} className="px-2 py-0.5 rounded bg-gray-200/80 font-medium text-gray-800">
-                  {p.name} {p.validDays ? `(${p.validDays} ${language === "th" ? "วัน" : p.validDays === 1 ? "Day" : "Days"})` : ""}
+                  {p.name} {p.validDays ? `(${p.validDays} ${p.validDays === 1 ? t("dayUnit") : t("daysUnit")})` : ""}
                 </span>
               ))}
             </div>
@@ -251,7 +252,7 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
                     {/* Activities Table */}
                     {activeActivities.length === 0 ? (
                       <div className="p-3 text-gray-400 text-center italic text-[11px]">
-                        {language === "th" ? "ยังไม่มีกิจกรรมในวันนี้" : "No scheduled activities recorded for this day"}
+                        {t("noScheduledActivities")}
                       </div>
                     ) : (
                       <table className="w-full text-left border-collapse text-[11px]">

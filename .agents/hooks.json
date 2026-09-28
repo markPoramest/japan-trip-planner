@@ -1,0 +1,11 @@
+{
+  "doc-update-reminder": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node .agents/scripts/doc-reminder.js",
+        "timeout": 5
+      }
+    ]
+  }
+}

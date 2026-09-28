@@ -4,14 +4,14 @@ import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function TripListSkeleton() {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-bg-base pb-20 relative">
       {/* Floating Active Loading Indicator Pill */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-bg-card/90 border border-accent/40 shadow-2xl backdrop-blur-md text-xs font-bold text-accent animate-in fade-in slide-in-from-bottom-3 duration-200">
         <Loader2 className="w-4 h-4 animate-spin text-accent" />
-        <span>{language === "th" ? "กำลังโหลดรายการทริป..." : "Loading Trips..."}</span>
+        <span>{t("loadingTrips")}</span>
       </div>
 
       {/* Header Skeleton */}

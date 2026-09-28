@@ -210,7 +210,7 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-accent group-hover:text-white" />
                   <span>
-                    {language === "th" ? "กำลังเปิด..." : "Opening..."}
+                    {t("openingEllipsis")}
                   </span>
                 </>
               ) : (

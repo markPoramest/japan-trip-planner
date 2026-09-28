@@ -165,7 +165,7 @@ export default function PassModal({
             {/* Currency selector */}
             <div>
               <label className={labelClass}>
-                {language === "th" ? "สกุลเงิน" : "Currency"}
+                {t("currency")}
               </label>
               <select
                 value={inputCurrency}
@@ -195,7 +195,7 @@ export default function PassModal({
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
                 <span className="text-text-muted flex items-center gap-1">
                   <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{language === "th" ? "เทียบเท่า" : "Equivalent to"}:</span>
+                  <span>{t("equivalentTo")}:</span>
                 </span>
                 <div className="font-mono font-bold text-right">
                   <span className="text-accent">{formatJPY(jpyVal)}</span>
@@ -235,7 +235,7 @@ export default function PassModal({
               className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
             >
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>{loading ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : isEditing ? t("saveChanges") : t("addPass")}</span>
+              <span>{loading ? t("savingEllipsis") : isEditing ? t("saveChanges") : t("addPass")}</span>
             </button>
           </div>
         </form>

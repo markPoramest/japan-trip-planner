@@ -23,7 +23,12 @@ export default async function TripsPage() {
     where: { userId },
     include: {
       days: {
-        include: { activities: true },
+        include: {
+          activities: true,
+          plans: {
+            include: { activities: true },
+          },
+        },
         orderBy: { dayNumber: "asc" },
       },
       hotels: true,
@@ -34,7 +39,10 @@ export default async function TripsPage() {
   });
 
   const trips = rawTrips.map((trip) => {
-    const allActivities = trip.days.flatMap((d) => d.activities);
+    const allActivities = trip.days.flatMap((d) => {
+      const mainPlan = d.plans?.find((p) => p.isMain) || d.plans?.[0];
+      return mainPlan ? mainPlan.activities : d.activities;
+    });
     const totalActivitiesJpy = allActivities.reduce((s, a) => s + (a.cost || 0), 0);
     const totalPassJpy = trip.passes.reduce((s, p) => s + (p.costJpy || 0), 0);
     const totalHotelThb = trip.hotels.reduce((s, h) => s + (h.costThb || 0), 0);
@@ -63,13 +71,15 @@ export default async function TripsPage() {
       daysCount: trip.days.length,
       activitiesCount: allActivities.length,
       days: trip.days.map((d) => {
-        const dayCostJpy = d.activities.reduce((s, a) => s + (a.cost || 0), 0);
+        const mainPlan = d.plans?.find((p) => p.isMain) || d.plans?.[0];
+        const activeActs = mainPlan ? mainPlan.activities : d.activities;
+        const dayCostJpy = activeActs.reduce((s, a) => s + (a.cost || 0), 0);
         return {
           id: d.id,
           dayNumber: d.dayNumber,
           title: d.title,
           dayCostJpy,
-          activities: d.activities.map((a) => ({
+          activities: activeActs.map((a) => ({
             id: a.id,
             location: a.location,
             activity: a.activity,

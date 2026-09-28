@@ -40,7 +40,7 @@ export default function BookingsClient({ trip, isOwner = false, totalIcSpendJpy,
         {!isOwner && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-surface border border-border text-xs font-semibold text-text-muted">
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{language === "th" ? "โหมดอ่านอย่างเดียว" : "View Only"}</span>
+            <span>{t("viewOnly")}</span>
           </span>
         )}
       </div>

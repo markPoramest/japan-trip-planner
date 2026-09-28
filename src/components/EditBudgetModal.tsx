@@ -304,13 +304,13 @@ export default function EditBudgetModal({
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-text-muted flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-accent" />
-                  <span>{language === "th" ? "แนะนำ:" : "Presets:"}</span>
+                  <span>{t("presets")}</span>
                 </span>
                 {[
                   { label: "IC Card", val: "IC Card (Suica/Pasmo)" },
-                  { label: language === "th" ? "เงินสด" : "Cash", val: language === "th" ? "Cash (เงินสด)" : "Cash Pocket" },
+                  { label: t("cashPreset"), val: t("cashPresetPocket") },
                   { label: "Wise / Card", val: "Travel Card (Wise)" },
-                  { label: language === "th" ? "ช้อปปิ้ง" : "Shopping", val: "Shopping Budget" },
+                  { label: t("shoppingPreset"), val: t("shoppingPresetBudget") },
                 ].map((p) => (
                   <button
                     key={p.label}
@@ -359,7 +359,7 @@ export default function EditBudgetModal({
                   className="px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer disabled:opacity-60 flex-shrink-0"
                 >
                   {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  <span>{adding ? (language === "th" ? "กำลังเพิ่ม..." : "Adding...") : t("addWallet")}</span>
+                  <span>{adding ? t("addingEllipsis") : t("addWallet")}</span>
                 </button>
               </div>
             </div>
@@ -369,7 +369,7 @@ export default function EditBudgetModal({
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
                 <span className="text-text-muted flex items-center gap-1">
                   <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{language === "th" ? "เทียบเท่า" : "Equivalent to"}:</span>
+                  <span>{t("equivalentTo")}:</span>
                 </span>
                 <div className="font-mono font-bold text-right text-xs">
                   <span className="text-accent">{formatTHB(newThbVal)}</span>
@@ -485,7 +485,7 @@ export default function EditBudgetModal({
             className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold transition-all shadow-accent flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
           >
             {savingAll && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            <span>{savingAll ? (language === "th" ? "กำลังบันทึก..." : "Saving...") : t("saveChanges")}</span>
+            <span>{savingAll ? t("savingEllipsis") : t("saveChanges")}</span>
           </button>
         </div>
       </div>

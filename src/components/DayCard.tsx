@@ -52,18 +52,6 @@ interface DayCardProps {
   };
 }
 
-function getPlanIcon(tag: string | null | undefined, isMain: boolean) {
-  if (isMain) return "⭐";
-  if (!tag) return "📋";
-  const lower = tag.toLowerCase();
-  if (lower.includes("rain") || lower.includes("weather")) return "🌧️";
-  if (lower.includes("indoor") || lower.includes("museum") || lower.includes("mall") || lower.includes("shopping")) return "🏛️";
-  if (lower.includes("chill") || lower.includes("relax") || lower.includes("cafe")) return "☕";
-  if (lower.includes("backup") || lower.includes("route") || lower.includes("detour")) return "⚡";
-  if (lower.includes("food") || lower.includes("eat")) return "🍱";
-  return "📋";
-}
-
 export default function DayCard({
   day,
   tripId,
@@ -84,7 +72,6 @@ export default function DayCard({
 
   const mainPlan = day.plans?.find((p) => p.isMain) || day.plans?.[0];
   const activeActivities = mainPlan ? mainPlan.activities : day.activities;
-  const substitutePlans = day.plans ? day.plans.filter((p) => !p.isMain) : [];
 
   const totalCost = activeActivities.reduce((sum, a) => sum + (a.cost || 0), 0);
   const icCost = activeActivities.filter((a) => a.isIcCard).reduce((sum, a) => sum + (a.cost || 0), 0);
@@ -172,7 +159,7 @@ export default function DayCard({
 
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium text-text-faint bg-bg-surface px-2 py-0.5 rounded-full border border-border/60">
-                {day.activities.length} {t("stops")}
+                {activeActivities.length} {t("stops")}
               </span>
               {isOwner && (
                 <button
@@ -254,29 +241,6 @@ export default function DayCard({
               )}
             </div>
           )}
-
-          {/* Substitute Plans Indicator Pills */}
-          {substitutePlans.length > 0 && (
-            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-text-faint">
-                {t("substitutePlans")}:
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-accent/15 text-accent font-bold border border-accent/25 flex items-center gap-1">
-                <span>⭐</span>
-                <span className="truncate max-w-[130px]">{mainPlan ? mainPlan.title : "Main"}</span>
-              </span>
-              {substitutePlans.map((sub) => (
-                <span
-                  key={sub.id}
-                  className="text-[10px] px-2 py-0.5 rounded-md bg-bg-surface text-text-muted font-medium border border-border flex items-center gap-1"
-                  title={sub.notes || sub.title}
-                >
-                  <span>{getPlanIcon(sub.tag, false)}</span>
-                  <span className="truncate max-w-[120px]">{sub.title}</span>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Cost Summary */}
@@ -306,7 +270,7 @@ export default function DayCard({
               {navigating ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-accent group-hover:text-white" />
-                  <span>{language === "th" ? "กำลังโหลด..." : "Loading..."}</span>
+                  <span>{t("loadingEllipsis")}</span>
                 </>
               ) : (
                 <>

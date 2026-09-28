@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatJPY, formatTHB } from "@/lib/utils";
 import { Layers } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatHotelStay } from "@/lib/hotelDates";
 
 interface DayRow {
   id: string;
@@ -46,7 +47,7 @@ export default function SummaryClient({
   totalFlightThb,
   totalFixedBudgetThb,
 }: SummaryClientProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const thClass = "pb-3 text-xs font-bold uppercase tracking-wider text-text-muted";
   const tdClass = "py-3.5 px-4";
@@ -126,7 +127,7 @@ export default function SummaryClient({
                   const hJpy = trip.exchangeRate > 0 && h.costThb ? h.costThb / trip.exchangeRate : 0;
                   return (
                     <tr key={h.id}>
-                      <td className="py-2.5 text-text-secondary">{h.dateRange} — {h.name}</td>
+                      <td className="py-2.5 text-text-secondary">{formatHotelStay(h, language)} — {h.name}</td>
                       <td className="py-2.5 text-right font-mono text-text-primary">{h.costThb ? formatTHB(h.costThb) : "—"}</td>
                       <td className="py-2.5 text-right font-mono text-text-muted">{hJpy > 0 ? formatJPY(hJpy) : "—"}</td>
                     </tr>

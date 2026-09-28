@@ -53,17 +53,15 @@ export default function LoginPage() {
         <div className="flex-1 space-y-6 text-center lg:text-left" data-aos="fade-right">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{language === "th" ? "พื้นที่วางแผนทริปส่วนตัว 100%" : "100% Private Trip Workspace"}</span>
+            <span>{t("privateTripWorkspace")}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold text-text-primary tracking-tight leading-tight">
-            {language === "th" ? "วางแผนเที่ยวญี่ปุ่น จัดการค่าใช้จ่ายในที่เดียว" : "Your Personal Japan Travel Hub"}
+            {t("loginHeroTitle")}
           </h1>
 
           <p className="text-text-secondary text-base sm:text-lg leading-relaxed max-w-xl">
-            {language === "th"
-              ? "สร้างแผนการเดินทางส่วนตัว จัดการตารางรายวัน คำนวณบัตร IC Card ตั๋วพาส โรงแรม และดาวน์โหลดแพลนเที่ยวได้ง่ายๆ"
-              : "Organize itineraries, track live IC card and transit spend, manage hotel & flight bookings, and export PDF sheets."}
+            {t("loginHeroDesc")}
           </p>
 
           {/* Privacy highlights */}
@@ -71,23 +69,23 @@ export default function LoginPage() {
             {[
               {
                 icon: ShieldCheck,
-                title: language === "th" ? "ข้อมูลส่วนตัว ปลอดภัย" : "Private & Secure",
-                desc: language === "th" ? "ทริปของคุณมองเห็นได้เฉพาะคุณเท่านั้น" : "Your itineraries belong only to you.",
+                title: t("privateAndSecureTitle"),
+                desc: t("privateAndSecureDesc"),
               },
               {
                 icon: CreditCard,
-                title: language === "th" ? "คำนวณ 2 สกุลเงินสด" : "Dual Currency Sync",
-                desc: language === "th" ? "แปลง JPY ⇄ THB อัตโนมัติทุกจุด" : "Live JPY ⇄ THB auto-calculations.",
+                title: t("dualCurrencyTitle"),
+                desc: t("dualCurrencyDesc"),
               },
               {
                 icon: Calendar,
-                title: language === "th" ? "กำหนดการรายวันละเอียด" : "Daily Timelines",
-                desc: language === "th" ? "บันทึกเวลา พาส และการเดินทาง" : "Hourly stops with transit pass links.",
+                title: t("dailyTimelinesTitle"),
+                desc: t("dailyTimelinesDesc"),
               },
               {
                 icon: Layers,
-                title: language === "th" ? "ตารางสรุปงบครบถ้วน" : "Excel Summary",
-                desc: language === "th" ? "สรุปแยกตามประเภทและกระเป๋าเงิน" : "Clear breakdown by wallet & category.",
+                title: t("excelSummaryTitle"),
+                desc: t("excelSummaryDesc"),
               },
             ].map((item, idx) => {
               const Icon = item.icon;
@@ -114,12 +112,10 @@ export default function LoginPage() {
                 className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto drop-shadow-md hover:scale-105 transition-transform"
               />
               <h2 className="text-2xl font-extrabold text-text-primary">
-                {language === "th" ? "เข้าสู่ระบบ" : "Sign In"}
+                {t("signIn")}
               </h2>
               <p className="text-xs text-text-muted">
-                {language === "th"
-                  ? "เข้าสู่ระบบด้วย Google เพื่อจัดการทริปส่วนตัวของคุณ"
-                  : "Sign in with Google to access your private trip plans"}
+                {t("loginCardDesc")}
               </p>
             </div>
 
@@ -127,12 +123,10 @@ export default function LoginPage() {
             {authError && (
               <div className="p-3 rounded-xl bg-accent/15 border border-accent/30 text-xs text-accent space-y-1">
                 <p className="font-bold">
-                  {language === "th" ? "การเข้าสู่ระบบไม่สำเร็จ" : "Authentication Error"}
+                  {t("authErrorTitle")}
                 </p>
                 <p className="text-[11px] text-text-muted">
-                  {language === "th"
-                    ? "กรุณาลองเข้าสู่ระบบด้วย Google ใหม่อีกครั้ง"
-                    : "Please try signing in with Google again."}
+                  {t("authErrorDesc")}
                 </p>
               </div>
             )}
@@ -147,7 +141,7 @@ export default function LoginPage() {
               {signingIn || status === "loading" ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                  <span>{language === "th" ? "กำลังเชื่อมต่อ Google..." : "Connecting Google..."}</span>
+                  <span>{t("connectingGoogle")}</span>
                 </>
               ) : (
                 <>
@@ -170,13 +164,13 @@ export default function LoginPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                     />
                   </svg>
-                  <span>{language === "th" ? "เข้าสู่ระบบด้วย Google" : "Continue with Google"}</span>
+                  <span>{t("continueWithGoogle")}</span>
                 </>
               )}
             </button>
 
             <div className="text-center text-[11px] text-text-faint space-y-1 pt-1 border-t border-border/60">
-              <p>{language === "th" ? "ปลอดภัยและเป็นส่วนตัว 100%" : "Private by design · No public sharing"}</p>
+              <p>{t("privateByDesign")}</p>
             </div>
           </div>
         </div>
