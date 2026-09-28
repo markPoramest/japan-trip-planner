@@ -89,3 +89,12 @@ Located at [src/app/trips/[tripId]/export/page.tsx](../../../../src/app/trips/[t
 - Includes a dedicated language toggle directly on the export toolbar so users can export in Thai or English independently of their profile setting.
 - Renders hotel stays using localized `formatHotelStay(hotel, exportLanguage)`.
 - Renders only the Main Plan activities for every day.
+
+---
+
+## 5. Share & Instagram Story Generator (`ShareTripModal.tsx`)
+
+Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareTripModal.tsx):
+- Generates 9:16 Instagram Story summary cards with full financial estimates and daily route cards.
+- Day cards on the story canvas require `dayCostJpy` and activity costs to render non-zero daily totals.
+- Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) must pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.

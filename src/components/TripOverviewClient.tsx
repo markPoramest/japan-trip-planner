@@ -395,16 +395,23 @@ export default function TripOverviewClient({
           totalPassJpy: trip.totalPassJpy,
           totalFlightThb: trip.totalFlightThb,
           isPublic: trip.isPublic !== false,
-          days: trip.days.map((d) => ({
-            id: d.id,
-            dayNumber: d.dayNumber,
-            title: d.title,
-            activities: d.activities.map((a) => ({
-              id: a.id,
-              location: a.location,
-              activity: a.activity,
-            })),
-          })),
+          days: trip.days.map((d) => {
+            const mainPlan = d.plans?.find((p: any) => p.isMain) || d.plans?.[0];
+            const activeActivities = mainPlan ? mainPlan.activities : d.activities;
+            const dayCostJpy = activeActivities.reduce((s: number, a: any) => s + (a.cost || 0), 0);
+            return {
+              id: d.id,
+              dayNumber: d.dayNumber,
+              title: d.title,
+              dayCostJpy,
+              activities: activeActivities.map((a: any) => ({
+                id: a.id,
+                location: a.location,
+                activity: a.activity,
+                cost: a.cost,
+              })),
+            };
+          }),
           hotels: trip.hotels,
           passes: trip.passes,
           flights: trip.flights,

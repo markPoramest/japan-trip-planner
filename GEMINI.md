@@ -20,7 +20,7 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
 - **Substitute Plans**:
   - Exactly one `DayPlan` per `TripDay` has `isMain: true`.
   - Swapping updates optimistic state first and displays a full-screen loading portal in [DayTimeline.tsx](./src/components/DayTimeline.tsx).
-  - Export, summary, and overview views (including DayCard stop counts and trip totals) must only present and aggregate `isMain: true` plans.
+  - Export, summary, overview views, and Instagram Story generator (including DayCard stop counts and trip totals) must only present and aggregate `isMain: true` plans.
   - Do not apply `data-aos` to dynamic list items in `DayTimeline.tsx`.
 - **Localization (i18n)**:
   - Add all user-facing copy to both `en` and `th` in [src/lib/i18n.ts](./src/lib/i18n.ts).

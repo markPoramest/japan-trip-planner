@@ -93,7 +93,7 @@ japan-trip/
   - `localPlans` state is updated immediately on swap, delete, or rename.
   - An animated full-screen portal loading overlay (`isSwapping`) covers the screen during server processing to prevent visual glitches.
   - Dynamic elements in DayTimeline do NOT have `data-aos` attributes to avoid repeated re-animation artifacts.
-- **Export, Overview & Summary Views**: Only `isMain: true` plans must be shown on the export page ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx)), summary pages, and overview cards ([DayCard.tsx](./src/components/DayCard.tsx) stop count badge and costs). Never aggregate substitute plan activities into trip or day totals.
+- **Export, Overview & Summary Views**: Only `isMain: true` plans must be shown on the export page ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx)), summary pages, overview cards ([DayCard.tsx](./src/components/DayCard.tsx) stop count badge and costs), and the Instagram Story generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx)). Never aggregate substitute plan activities into trip or day totals.
 
 ### C. Bilingual i18n (English & Thai)
 - Dictionary located in [src/lib/i18n.ts](./src/lib/i18n.ts).
