@@ -103,7 +103,8 @@ Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareT
   - **Left Side**: Displays up to 2 user-uploadable travel photos in tilted Polaroid frames with washi tape, custom captions, and Japanese travel calligraphy (`また、日本の旅を。` with localized subtitle). If no photo is uploaded, falls back to CORS-safe default Japanese scenery vector illustrations.
   - **Right Side**: Displays a vertical connected Daily Route timeline (Day 1 - Day N) with orange node dots, day badge (`Day X` / `วันที่ X`), destination titles, and individual day costs (sleek and minimal without misleading landmark icons).
 - **Full Bilingual Localization (EN/TH)**:
-  - All labels across the 9:16 story canvas (app title, subtitle, duration badge, dates in Thai Buddhist Era / Western Gregorian, estimated cost header, 4 category chips, timeline title, day badges, and footer itinerary text) dynamically adapt to Thai (`th`) and English (`en`) via [src/lib/i18n.ts](../../../../src/lib/i18n.ts).
+  - All labels across the 9:16 story canvas (app title, subtitle, duration badge, dates in Thai Buddhist Era / Western Gregorian, estimated cost header, 4 category chips, timeline title, and day badges) dynamically adapt to Thai (`th`) and English (`en`) via [src/lib/i18n.ts](../../../../src/lib/i18n.ts).
+- **Clean Footer Brand Stamp**: Minimal footer displaying Japanese travel stamp `🚄 日本旅行` and brand signature `MARK NO NIHON TABI`.
 - Day cards on the story canvas require `dayCostJpy` and activity costs to render non-zero daily totals.
 - Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) must pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.
 

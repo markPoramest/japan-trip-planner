@@ -1127,11 +1127,7 @@ ${trip.days.map((d) => `• ${t("dayCountBadge", { count: d.dayNumber })}: ${d.t
                         : "border-black/10 text-[#7A746B]"
                     }`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-[#EB5E28]">🚄 日本旅行</span>
-                      <span>•</span>
-                      <span>{t("storyFooterItinerary", { count: durationDays })}</span>
-                    </div>
+                    <span className="font-bold text-[#EB5E28]">🚄 日本旅行</span>
                     <div className="font-bold tracking-wider">
                       MARK NO NIHON TABI
                     </div>
