@@ -27,3 +27,8 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Do not use inline `language === "th"` ternaries in JSX components.
 - **Hotel Dates**:
   - Always use [src/lib/hotelDates.ts](./src/lib/hotelDates.ts) (`formatHotelStay`, `parseHotelDates`) for stay formatting and night calculations in English and Thai (Buddhist Era).
+- **Instagram Story Generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx))**:
+  - Top header is balanced end-to-end (brand on left, duration badge + maple leaf on right).
+  - Daily route timeline presents minimal day badges (`Day X` / `วันที่ X`) and day costs without landmark icons (`getDayIcon` removed).
+  - All labels on the 9:16 card adapt to the active language via [src/lib/i18n.ts](./src/lib/i18n.ts).
+

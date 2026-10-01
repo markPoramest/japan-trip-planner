@@ -96,5 +96,14 @@ Located at [src/app/trips/[tripId]/export/page.tsx](../../../../src/app/trips/[t
 
 Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareTripModal.tsx):
 - Generates 9:16 Instagram Story summary cards with full financial estimates and daily route cards.
+- **Top Panel Layout**:
+  - Row 1: App logo & branding (`Japan Trip Planner` / `แพลนทริปญี่ปุ่น`) with subtitle on the left; Duration badge (`{durationDays} DAYS` / `{durationDays} วัน`) and decorative Autumn Maple Leaf on the right, eliminating awkward top-right empty space.
+  - Row 2: Trip title (prominent with full horizontal breathing room) and localized date range pill (`startStr – endStr`).
+- **Two-Column Split Layout**:
+  - **Left Side**: Displays up to 2 user-uploadable travel photos in tilted Polaroid frames with washi tape, custom captions, and Japanese travel calligraphy (`また、日本の旅を。` with localized subtitle). If no photo is uploaded, falls back to CORS-safe default Japanese scenery vector illustrations.
+  - **Right Side**: Displays a vertical connected Daily Route timeline (Day 1 - Day N) with orange node dots, day badge (`Day X` / `วันที่ X`), destination titles, and individual day costs (sleek and minimal without misleading landmark icons).
+- **Full Bilingual Localization (EN/TH)**:
+  - All labels across the 9:16 story canvas (app title, subtitle, duration badge, dates in Thai Buddhist Era / Western Gregorian, estimated cost header, 4 category chips, timeline title, day badges, and footer itinerary text) dynamically adapt to Thai (`th`) and English (`en`) via [src/lib/i18n.ts](../../../../src/lib/i18n.ts).
 - Day cards on the story canvas require `dayCostJpy` and activity costs to render non-zero daily totals.
 - Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) must pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.
+

@@ -53,6 +53,7 @@ japan-trip/
 │   │   ├── HotelTable.tsx    # Hotel bookings list with localized stay formatting
 │   │   ├── BatchActivityModal.tsx # Rapid batch entry for activities
 │   │   ├── ExportItineraryView.tsx # Export view (MAIN plan only)
+│   │   ├── ShareTripModal.tsx # 9:16 Instagram Story generator & share link modal
 │   │   └── skeletons/        # Skeleton loaders for instant route transitions
 │   ├── context/
 │   │   ├── LanguageContext.tsx # Bilingual context (en / th)
@@ -105,6 +106,13 @@ japan-trip/
 - ALWAYS use [src/lib/hotelDates.ts](./src/lib/hotelDates.ts):
   - `parseHotelDates(hotel, trip)`: Extract valid check-in/out dates and night counts.
   - `formatHotelStay(hotel, language)`: Returns formatted stay string with nights count, using Thai Buddhist Era (พ.ศ. = AD + 543) for Thai and Gregorian year for English.
+
+### E. Instagram Story Generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx))
+- **9:16 Canvas Layout**:
+  - Balanced Top Bar: App brand & subtitle on the left; Duration badge (`{durationDays} DAYS` / `{durationDays} วัน`) and decorative maple leaf on the right (eliminating top-right void).
+  - Main Title & Date: Full-width trip title with localized date pill (`startStr – endStr`).
+  - Two-Column Body: Up to 2 user photos with captions on the left; vertical daily route timeline on the right with day badges and costs (sleek and minimal without misleading landmark icons).
+  - Full Bilingual Localization: Every label (brand, costs, chips, timeline, badges, footer) uses [src/lib/i18n.ts](./src/lib/i18n.ts) without inline language conditionals.
 
 ---
 
