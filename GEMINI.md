@@ -31,4 +31,9 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Top header is balanced end-to-end (brand on left, duration badge + maple leaf on right).
   - Daily route timeline presents minimal day badges (`Day X` / `วันที่ X`) and day costs without landmark icons (`getDayIcon` removed).
   - All labels on the 9:16 card adapt to the active language via [src/lib/i18n.ts](./src/lib/i18n.ts).
+- **Export Itinerary & Print Configuration ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx))**:
+  - Dedicated loading skeleton [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) at `src/app/trips/[tripId]/export/loading.tsx`.
+  - Remarks with URLs render clickable links (`🔗 {remark}`) without stripping.
+  - Print margins are preserved for natural multi-page spacing; browser URLs are removed by unchecking "Headers and footers" in the print dialog.
+
 

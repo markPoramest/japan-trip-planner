@@ -85,10 +85,13 @@ export function MyComponent() {
 ## 4. Export & Itinerary Generation
 
 Located at [src/app/trips/[tripId]/export/page.tsx](../../../../src/app/trips/[tripId]/export/page.tsx) and [src/components/ExportItineraryView.tsx](../../../../src/components/ExportItineraryView.tsx):
-- Allows users to export their complete trip itinerary as a high-resolution PNG image (using `html-to-image`) or print to PDF.
+- Allows users to export their complete trip itinerary as a high-resolution PNG image or print to PDF.
+- **Dedicated Loading Skeleton**: [ExportItinerarySkeleton.tsx](../../../../src/components/skeletons/ExportItinerarySkeleton.tsx) configured in [src/app/trips/[tripId]/export/loading.tsx](../../../../src/app/trips/[tripId]/export/loading.tsx) so loading matches the A4 document layout instead of the overview dashboard.
 - Includes a dedicated language toggle directly on the export toolbar so users can export in Thai or English independently of their profile setting.
 - Renders hotel stays using localized `formatHotelStay(hotel, exportLanguage)`.
 - Renders only the Main Plan activities for every day.
+- **Remarks & Links**: Detects URLs in activity remarks (`act.remark.match(/https?:\/\/[^\s]+/)`) and renders active clickable links (`🔗 {remark}`) without stripping URLs.
+- **Print & PDF Export**: Natural page margins are preserved for clean multi-page pagination. Browser URLs and page numbers can be hidden by unchecking "Headers and footers" in the browser print dialog. Floating action bar includes a helpful tip banner.
 
 ---
 

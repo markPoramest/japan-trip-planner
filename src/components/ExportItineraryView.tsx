@@ -69,14 +69,21 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
           1. FLOATING ACTION BAR (HIDDEN IN PRINT)
       ───────────────────────────────────────────── */}
       <div className="sticky top-0 z-50 bg-bg-card/95 backdrop-blur border-b border-border shadow-md print:hidden">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link
-            href={`/trips/${trip.id}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface border border-border text-text-secondary hover:text-text-primary text-xs font-semibold transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{t("backToTrip")}</span>
-          </Link>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href={`/trips/${trip.id}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface border border-border text-text-secondary hover:text-text-primary text-xs font-semibold transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t("backToTrip")}</span>
+            </Link>
+
+            <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-text-muted bg-bg-surface/90 border border-border/80 px-3 py-1.5 rounded-xl">
+              <span>💡</span>
+              <span>{t("printHeaderFooterTip")}</span>
+            </span>
+          </div>
 
           <div className="flex items-center gap-3">
             {/* Quick Language Toggle */}
@@ -261,7 +268,7 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
                             <th className="py-1.5 px-3 w-16">{t("timeCol")}</th>
                             <th className="py-1.5 px-3 w-48">{t("locationCol")}</th>
                             <th className="py-1.5 px-3">{t("activityCol")}</th>
-                            <th className="py-1.5 px-3 w-36 text-right">{t("passCol")}</th>
+                            <th className="py-1.5 px-3 w-48 text-right">{t("passCol")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -281,15 +288,34 @@ export default function ExportItineraryView({ trip }: ExportItineraryProps) {
                               </td>
                               <td className="py-1.5 px-3 text-right align-top text-gray-600 text-[10px]">
                                 {act.usingPass && (
-                                  <span className="font-semibold text-gray-900 block">
+                                  <span className="font-semibold text-gray-900 block mb-0.5">
                                     🚆 {act.usingPass}
                                   </span>
                                 )}
-                                {act.remark && (
-                                  <span className="text-gray-500 block italic truncate max-w-[150px] ml-auto">
-                                    {act.remark.replace(/(https?:\/\/[^\s]+)/g, "").trim() || "Info link"}
-                                  </span>
-                                )}
+                                {act.remark && (() => {
+                                  const urlMatch = act.remark.match(/https?:\/\/[^\s]+/);
+                                  const linkUrl = urlMatch ? urlMatch[0] : null;
+
+                                  if (linkUrl) {
+                                    return (
+                                      <a
+                                        href={linkUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800 underline block break-all text-[10px] font-medium print:text-blue-700"
+                                        title={linkUrl}
+                                      >
+                                        🔗 {act.remark}
+                                      </a>
+                                    );
+                                  }
+
+                                  return (
+                                    <span className="text-gray-500 block italic text-[10px] break-words">
+                                      {act.remark}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                             </tr>
                           ))}
