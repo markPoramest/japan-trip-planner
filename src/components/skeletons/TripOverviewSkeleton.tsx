@@ -30,20 +30,38 @@ export default function TripOverviewSkeleton() {
         </div>
       </div>
 
-      {/* 4 Financial Stat Cards Skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="rounded-3xl bg-bg-card border border-border p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="w-20 h-4 skeleton-shimmer rounded" />
-              <div className="w-8 h-8 rounded-xl skeleton-shimmer" />
-            </div>
+      {/* Financial Stat Cards Skeleton: Col 1 (Grand Total) + Col 2 (4 Sub-category cards row) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* Col 1: Grand Total Priority Skeleton */}
+        <div className="lg:col-span-4 rounded-3xl bg-bg-card border-2 border-accent/30 p-5 sm:p-6 flex flex-col justify-between h-full min-h-[140px]">
+          <div className="flex items-start justify-between gap-3">
             <div className="space-y-1.5">
-              <div className="w-28 h-7 skeleton-shimmer rounded-lg" />
-              <div className="w-24 h-3.5 skeleton-shimmer rounded" />
+              <div className="w-32 h-4 skeleton-shimmer rounded" />
+              <div className="w-24 h-3 skeleton-shimmer rounded" />
             </div>
+            <div className="w-10 h-10 rounded-2xl skeleton-shimmer shrink-0" />
           </div>
-        ))}
+          <div className="space-y-2 mt-4 sm:mt-5">
+            <div className="w-36 h-8 skeleton-shimmer rounded-lg" />
+            <div className="w-24 h-4 skeleton-shimmer rounded" />
+          </div>
+        </div>
+
+        {/* Col 2: 4 Sub Cards Skeleton Row */}
+        <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-3xl bg-bg-card border border-border p-4 sm:p-5 flex flex-col justify-between space-y-4 min-h-[140px]">
+              <div className="flex items-start justify-between gap-2">
+                <div className="w-16 h-3.5 skeleton-shimmer rounded" />
+                <div className="w-8 h-8 rounded-xl skeleton-shimmer shrink-0" />
+              </div>
+              <div className="space-y-1.5 mt-3">
+                <div className="w-20 h-6 skeleton-shimmer rounded-lg" />
+                <div className="w-16 h-3 skeleton-shimmer rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Itinerary Days Grid Skeleton */}

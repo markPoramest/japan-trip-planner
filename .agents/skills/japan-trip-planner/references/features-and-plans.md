@@ -111,3 +111,19 @@ Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareT
 - Day cards on the story canvas require `dayCostJpy` and activity costs to render non-zero daily totals.
 - Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) must pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.
 
+---
+
+## 6. Financial Summary & Overview Stats Layout (`TripStats.tsx`)
+
+Located at [src/components/TripStats.tsx](../../../../src/components/TripStats.tsx) and matched in [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx):
+- **Core Principle**: Grand Total Estimated is the primary master metric (Main KPI), while Flights, Hotels, Passes, and Daily Activities are its sub-breakdown components.
+- **Two-Column Split Hierarchy**:
+  - **Column 1 (`lg:col-span-4`)**: `Grand Total Estimated` card with high-priority accent border, subtle gradient background, wallet icon in accented badge, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") explanatory subtitle.
+  - **Column 2 (`lg:col-span-8`)**: Sub-category cards row (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) laid out in a horizontal row (`grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4`).
+- **Responsive Stacking**:
+  - Mobile (<640px): Grand Total card on top, sub-categories in a 2x2 grid underneath.
+  - Tablet (640px - 1023px): Grand Total card on top full-width, sub-categories in a 4-card row underneath.
+  - Desktop (>=1024px): Grand Total in Col 1 on the left, sub-categories in a 4-card row in Col 2 on the right.
+- **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact same Col 1 + Col 2 grid structure during page transitions.
+
+

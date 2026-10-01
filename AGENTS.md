@@ -49,6 +49,7 @@ japan-trip/
 │   ├── components/           # Reusable UI components
 │   │   ├── DayTimeline.tsx   # Day timeline, plan tabs (Main/Substitutes), optimistic plan swapping
 │   │   ├── DayCard.tsx       # Day overview card on trip dashboard
+│   │   ├── TripStats.tsx     # Financial summary cards (Col 1 Grand Total priority + Col 2 sub-category row)
 │   │   ├── HotelModal.tsx    # Hotel booking create/edit modal
 │   │   ├── HotelTable.tsx    # Hotel bookings list with localized stay formatting
 │   │   ├── BatchActivityModal.tsx # Rapid batch entry for activities
@@ -118,6 +119,12 @@ japan-trip/
 - **Dedicated Loading Skeleton**: [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) used in `src/app/trips/[tripId]/export/loading.tsx` to match the A4 sheet format during transitions.
 - **Activity Remarks & URLs**: If an activity remark contains a URL, it is rendered as a clickable link (`🔗 {remark}`) without stripping URLs.
 - **Print Margins & Browser URL**: Preserves natural page margins for clean multi-page printouts. Browser URL and page numbers are removed by unchecking "Headers and footers" in the browser print dialog (guidance tip displayed on floating toolbar).
+
+### G. Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx))
+- **Two-Column Priority Structure**:
+  - **Column 1 (Left - Priority/Main KPI)**: `Grand Total Estimated` occupies `lg:col-span-4` with prominent accent styling, wallet icon, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") subtitle.
+  - **Column 2 (Right - Sub-categories Row)**: The 4 breakdown components (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) are placed in `lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4` as a neat horizontal row across from Grand Total.
+- **Matched Loading Skeleton**: [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) exactly mirrors the 2-column (Col 1 Grand Total + Col 2 4-card sub row) layout to guarantee zero layout shift on route transitions.
 
 ---
 

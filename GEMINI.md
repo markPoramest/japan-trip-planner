@@ -35,5 +35,10 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Dedicated loading skeleton [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) at `src/app/trips/[tripId]/export/loading.tsx`.
   - Remarks with URLs render clickable links (`🔗 {remark}`) without stripping.
   - Print margins are preserved for natural multi-page spacing; browser URLs are removed by unchecking "Headers and footers" in the print dialog.
+- **Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx))**:
+  - Two-column layout prioritizing Grand Total Estimated in Col 1 (`lg:col-span-4`) with prominent styling and helper subtitle.
+  - Sub-categories (Flights, Hotels, Passes, Everyday) arranged as a horizontal row in Col 2 (`lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4`).
+  - Loading skeleton in [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) mirrors this exact 2-column structure.
+
 
 
