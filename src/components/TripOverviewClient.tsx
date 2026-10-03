@@ -237,10 +237,6 @@ export default function TripOverviewClient({
       >
         <div className="relative z-10 max-w-3xl">
           <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" /> {t("japanTripPlanner")}
-            </div>
-
             {/* Share / Instagram Story Button */}
             <button
               type="button"
@@ -250,9 +246,8 @@ export default function TripOverviewClient({
               <Share2 className="w-3.5 h-3.5" />
               <span>{t("shareTrip")}</span>
               <span
-                className={`w-2 h-2 rounded-full ${
-                  trip.isPublic !== false ? "bg-emerald-300 animate-pulse" : "bg-white/40"
-                }`}
+                className={`w-2 h-2 rounded-full ${trip.isPublic !== false ? "bg-emerald-300 animate-pulse" : "bg-white/40"
+                  }`}
                 title={trip.isPublic !== false ? "Public" : "Private"}
               />
             </button>
