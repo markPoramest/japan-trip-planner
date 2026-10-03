@@ -126,4 +126,38 @@ Located at [src/components/TripStats.tsx](../../../../src/components/TripStats.t
   - Desktop (>=1024px): Grand Total in Col 1 on the left, sub-categories in a 4-card row in Col 2 on the right.
 - **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact same Col 1 + Col 2 grid structure during page transitions.
 
+---
+
+## 7. Day Itinerary Swapping Engine (`SwapDayModal.tsx` & `swapTripDays`)
+
+Located at [src/components/SwapDayModal.tsx](../../../../src/components/SwapDayModal.tsx) and [src/lib/actions.ts](../../../../src/lib/actions.ts):
+- **Purpose**: Allows users to exchange the itineraries, stops, and activities of two different days (e.g. Day 2 and Day 3) when weather, closures, or travel preferences change.
+- **Calendar-Safe Invariant**:
+  - The calendar date sequence and chronological day numbers remain intact (Day 1 is Oct 21, Day 2 is Oct 22, Day 3 is Oct 23).
+  - The two `TripDay` records atomically exchange `dayNumber`, `date`, `dayOfWeek`, and `slug` inside a Prisma transaction (`db.$transaction`).
+  - All existing `DayPlan` records and `DayActivity` records stay safely associated with their original `TripDay` without reassigning hundreds of foreign keys.
+- **Optimistic UI Execution**:
+  - [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) maintains `localDays` in state and immediately swaps their positions upon user confirmation for instantaneous 0ms visual feedback.
+  - Client component invokes `startTransition(() => router.refresh())` to seamlessly reconcile with the revalidated server paths.
+- **Entry Points**:
+  - Header Button: `⇄ Swap Days` / `⇄ สลับวันเดินทาง` positioned in the Daily Schedule section header.
+  - Day Cards: Individual [DayCard.tsx](../../../../src/components/DayCard.tsx) headers maintain a clean presentation with only the stop count badge (`X stops` / `X จุดแวะ`), without swap or add buttons.
+
+---
+
+## 8. In-between Stop & Activity Insertion Engine
+
+Located at [src/components/BatchActivityModal.tsx](../../../../src/components/BatchActivityModal.tsx) and [src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx):
+- **Purpose**: Enables users to insert a new stop/activity at any position in the day schedule (e.g. between Stop 3 and Stop 4, before Stop 1, or after any stop).
+- **Smart Midpoint Time Interpolation**:
+  - `calculateIntermediateTime(prevRow, nextRow)` extracts the time from surrounding stops (e.g. 10:20 and 13:00) and computes the exact intermediate time (e.g. 11:40), rounded to 5-minute increments.
+  - Automatically scrolls the newly created card smoothly into view and focuses its location input.
+- **Entry Points**:
+  - **In-between Dividers in Modal**: Interactive dashed divider button (`+ แทรกจุดแวะระหว่าง #{prev} กับ #{next}` / `+ Insert stop between #{prev} and #{next}`) positioned between every stop card.
+  - **Card Header Action**: `+` icon button next to the delete button in each card header to insert immediately after that card.
+  - **Top of Day Action**: `+ แทรกจุดแวะแรกของวัน` / `+ Insert stop at beginning of day` button to prepend a morning stop before Stop #1.
+  - **Timeline View Action**: In-between insert divider buttons on [DayTimeline.tsx](../../../../src/components/DayTimeline.tsx) open the batch editor with `initialInsertIndex` pre-selected.
+
+
+
 

@@ -319,6 +319,109 @@ export async function updateTripDay(
   return updated;
 }
 
+export async function swapTripDays(tripId: string, dayIdA: string, dayIdB: string) {
+  await verifyTripOwnership(tripId);
+
+  if (dayIdA === dayIdB) {
+    return { success: true };
+  }
+
+  const [dayA, dayB] = await Promise.all([
+    db.tripDay.findUnique({
+      where: { id: dayIdA },
+      select: {
+        id: true,
+        tripId: true,
+        dayNumber: true,
+        date: true,
+        dayOfWeek: true,
+        slug: true,
+        title: true,
+      },
+    }),
+    db.tripDay.findUnique({
+      where: { id: dayIdB },
+      select: {
+        id: true,
+        tripId: true,
+        dayNumber: true,
+        date: true,
+        dayOfWeek: true,
+        slug: true,
+        title: true,
+      },
+    }),
+  ]);
+
+  if (!dayA || !dayB) {
+    throw new Error("One or both trip days not found");
+  }
+
+  if (dayA.tripId !== tripId || dayB.tripId !== tripId) {
+    throw new Error("Unauthorized trip day swap");
+  }
+
+  // Generate new slugs reflecting the swapped day numbers
+  const cleanA = dayA.title.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-").substring(0, 30).replace(/-$/, "");
+  const cleanB = dayB.title.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-").substring(0, 30).replace(/-$/, "");
+
+  const newSlugA = dayA.slug.match(/^day-\d+/)
+    ? dayA.slug.replace(/^day-\d+/, `day-${dayB.dayNumber}`)
+    : `day-${dayB.dayNumber}-${cleanA || "day"}`;
+
+  const newSlugB = dayB.slug.match(/^day-\d+/)
+    ? dayB.slug.replace(/^day-\d+/, `day-${dayA.dayNumber}`)
+    : `day-${dayA.dayNumber}-${cleanB || "day"}`;
+
+  // Execute swap atomically using negative temporary dayNumber to guarantee 0 unique index collisions
+  await db.$transaction(async (tx) => {
+    // Step 1: Temporarily set Day A to negative dayNumber and intermediate date
+    await tx.tripDay.update({
+      where: { id: dayA.id },
+      data: {
+        dayNumber: -dayB.dayNumber,
+        date: dayB.date,
+        dayOfWeek: dayB.dayOfWeek,
+        slug: newSlugA,
+      },
+    });
+
+    // Step 2: Set Day B to Day A's former dayNumber, date, and new slug
+    await tx.tripDay.update({
+      where: { id: dayB.id },
+      data: {
+        dayNumber: dayA.dayNumber,
+        date: dayA.date,
+        dayOfWeek: dayA.dayOfWeek,
+        slug: newSlugB,
+      },
+    });
+
+    // Step 3: Finalize Day A to Day B's dayNumber
+    await tx.tripDay.update({
+      where: { id: dayA.id },
+      data: {
+        dayNumber: dayB.dayNumber,
+      },
+    });
+  });
+
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/days/${dayA.slug}`);
+  revalidatePath(`/trips/${tripId}/days/${dayB.slug}`);
+  revalidatePath(`/trips/${tripId}/days/${newSlugA}`);
+  revalidatePath(`/trips/${tripId}/days/${newSlugB}`);
+  revalidatePath(`/trips/${tripId}/export`);
+  revalidatePath(`/trips/${tripId}/summary`);
+  revalidatePath("/trips");
+
+  return {
+    success: true,
+    dayA: { id: dayA.id, oldDayNumber: dayA.dayNumber, newDayNumber: dayB.dayNumber, newSlug: newSlugA },
+    dayB: { id: dayB.id, oldDayNumber: dayB.dayNumber, newDayNumber: dayA.dayNumber, newSlug: newSlugB },
+  };
+}
+
 export async function createPass(tripId: string, data: { name: string; costJpy?: number; validDays?: number; notes?: string }) {
   await verifyTripOwnership(tripId);
 

@@ -39,6 +39,19 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Two-column layout prioritizing Grand Total Estimated in Col 1 (`lg:col-span-4`) with prominent styling and helper subtitle.
   - Sub-categories (Flights, Hotels, Passes, Everyday) arranged as a horizontal row in Col 2 (`lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4`).
   - Loading skeleton in [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) mirrors this exact 2-column structure.
+- **Day Itinerary Swapping ([SwapDayModal.tsx](./src/components/SwapDayModal.tsx) & `swapTripDays` in [src/lib/actions.ts](./src/lib/actions.ts))**:
+  - Swapping day plans and activities preserves the chronological date sequence by atomically swapping `dayNumber`, `date`, `dayOfWeek`, and `slug` between the two `TripDay` records.
+  - Client performs instant optimistic updates in `localDays` in [TripOverviewClient.tsx](./src/components/TripOverviewClient.tsx), paired with `startTransition(() => router.refresh())`.
+  - Triggered via the `⇄ Swap Days` (`⇄ สลับวันเดินทาง`) button in the Daily Schedule section header.
+  - `DayCard` header maintains a clean UI showing only the stop count badge (`X stops` / `X จุดแวะ`), without swap or add buttons.
+- **Modal Scroll Locking**:
+  - Every modal must lock `document.body.style.overflow = "hidden"` on open and restore on cleanup to prevent background mouse wheel scrolling.
+- **In-between Stop Insertion ([BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx) & [DayTimeline.tsx](./src/components/DayTimeline.tsx))**:
+  - Supports inserting new stops at any point (e.g. between Stop 3 and Stop 4, before Stop 1, or after any stop).
+  - Automatically calculates smart intermediate times via `calculateIntermediateTime` with 5-minute rounding and auto-focuses the new stop's location input.
+  - Interactive dividers and buttons available both inside `BatchActivityModal` and on `DayTimeline`.
+
+
 
 
 

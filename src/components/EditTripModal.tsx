@@ -68,6 +68,17 @@ export default function EditTripModal({ isOpen, onClose, trip }: EditTripModalPr
     }
   }, [isOpen, trip]);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen || !mounted) return null;
 
   async function performSave() {

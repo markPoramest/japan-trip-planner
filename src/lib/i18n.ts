@@ -95,6 +95,10 @@ export const translations = {
     removeStop: "Remove this stop",
     totalEstimatedCost: "Total Estimated Cost",
     noStopsAdded: "Please add at least one stop with a location or activity description.",
+    insertStopHere: "Insert stop here",
+    insertStopBetween: "Insert stop between #{prev} and #{next}",
+    insertStopBeforeFirst: "Insert stop at beginning of day",
+    insertStopAfter: "Insert stop after this",
 
     // Substitute / Multi-Plan
     substitutePlans: "Substitute Plans",
@@ -208,6 +212,21 @@ export const translations = {
     privateByDesign: "Private by design · No public sharing",
     shareStoryDesc: "9:16 Story card with summary cost and Day 1 - Day {duration} schedule",
     privateTripWarning: "This trip is private. Others opening the share link will not be able to view it until you switch visibility to Public.",
+
+    // Day Swap
+    swapDays: "Swap Days",
+    swapDayPosition: "Swap Day Itinerary",
+    swapDaysModalTitle: "Swap Day Itineraries",
+    swapDaysModalSubtitle: "Select two days to exchange their itinerary plans and activities while keeping calendar dates in sequence.",
+    selectFirstDay: "First Day",
+    selectSecondDay: "Second Day",
+    swapPreviewTitle: "Preview After Swap",
+    willBecome: "will become",
+    calendarDatesPreservedNote: "Calendar dates and day numbers will remain in sequence; daily schedules will be exchanged.",
+    confirmSwapDays: "Confirm & Swap Days",
+    swappingDays: "Swapping Days...",
+    swapDaysSuccess: "Swapped itineraries between Day {dayA} and Day {dayB} successfully!",
+    cannotSwapSameDay: "Please select two different days to swap.",
 
     // Bookings & Summary
     hotelsPassesBudgets: "Cost Handle (Hotels, Passes, Flights & Budgets)",
@@ -481,6 +500,10 @@ export const translations = {
     removeStop: "ลบจุดนี้",
     totalEstimatedCost: "ประมาณการค่าใช้จ่ายรวม",
     noStopsAdded: "กรุณาระบุสถานที่หรือรายละเอียดกิจกรรมอย่างน้อย 1 จุดแวะ",
+    insertStopHere: "แทรกจุดแวะตรงนี้",
+    insertStopBetween: "แทรกจุดแวะระหว่าง #{prev} กับ #{next}",
+    insertStopBeforeFirst: "แทรกจุดแวะแรกของวัน",
+    insertStopAfter: "แทรกจุดแวะต่อจากจุดนี้",
 
     // Substitute / Multi-Plan
     substitutePlans: "แผนสำรอง",
@@ -594,6 +617,21 @@ export const translations = {
     privateByDesign: "ปลอดภัยและเป็นส่วนตัว 100%",
     shareStoryDesc: "การ์ดสรุปทริปขนาด 9:16 พร้อมงบประมาณและตาราง Day 1 - Day {duration}",
     privateTripWarning: "ทริปนี้เป็นแบบส่วนตัว หากส่งลิงก์ให้ผู้อื่น พวกเขาจะไม่สามารถดูทริปได้จนกว่าคุณจะเปลี่ยนเป็นสาธารณะ",
+
+    // Day Swap
+    swapDays: "สลับวันเดินทาง",
+    swapDayPosition: "สลับตารางวันเดินทาง",
+    swapDaysModalTitle: "สลับตารางวันเดินทาง",
+    swapDaysModalSubtitle: "เลือก 2 วันที่ต้องการสลับตารางแผนเที่ยวและกิจกรรม โดยลำดับวันและปฏิทินจะคงเดิม",
+    selectFirstDay: "วันแรก",
+    selectSecondDay: "วันที่สอง",
+    swapPreviewTitle: "แสดงตัวอย่างหลังการสลับ",
+    willBecome: "จะกลายเป็น",
+    calendarDatesPreservedNote: "ลำดับวันที่และปฏิทินจะเรียงตามเดิม แต่ตารางกิจกรรมของทั้งสองวันจะสลับกัน",
+    confirmSwapDays: "ยืนยันการสลับวัน",
+    swappingDays: "กำลังสลับวัน...",
+    swapDaysSuccess: "สลับตารางระหว่าง วันที่ {dayA} และ วันที่ {dayB} สำเร็จ!",
+    cannotSwapSameDay: "กรุณาเลือกวันเดินทางที่ต่างกันเพื่อสลับ",
 
     // Bookings & Summary
     hotelsPassesBudgets: "จัดการค่าใช้จ่าย (โรงแรม, พาส/รถเช่า/ตั๋ว, เที่ยวบิน และงบประมาณ)",

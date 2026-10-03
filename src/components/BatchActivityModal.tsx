@@ -7,7 +7,7 @@ import { createActivitiesBatch, saveActivitiesBatch } from "@/lib/actions";
 import {
   X, Clock, MapPin, AlignLeft, CreditCard, Train, Ticket,
   Link as LinkIcon, CircleDollarSign, ArrowRightLeft, Loader2, Sparkles,
-  ChevronDown, Plus, Trash2, CheckCircle2, Edit3
+  ChevronDown, Plus, PlusCircle, Trash2, CheckCircle2, Edit3
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -35,6 +35,7 @@ interface BatchActivityModalProps {
   previousDayLastLocation?: string;
   planId?: string;
   initialMode?: "create" | "edit";
+  initialInsertIndex?: number | null;
   onSuccess?: (msg?: string) => void;
 }
 
@@ -54,10 +55,89 @@ interface BatchStopRow {
   remark: string;
 }
 
-function createEmptyRow(index: number, prevHour?: string): BatchStopRow {
+function calculateIntermediateTime(
+  prevRow?: BatchStopRow,
+  nextRow?: BatchStopRow
+): { hour: string; minute: string } {
+  const parseTime = (row?: BatchStopRow) => {
+    if (!row) return null;
+    const h = parseInt(row.hour, 10);
+    const m = parseInt(row.minute, 10);
+    if (isNaN(h)) return null;
+    return h * 60 + (isNaN(m) ? 0 : m);
+  };
+
+  const tPrev = parseTime(prevRow);
+  const tNext = parseTime(nextRow);
+
+  if (tPrev !== null && tNext !== null) {
+    if (tNext > tPrev) {
+      const diff = tNext - tPrev;
+      if (diff > 10) {
+        const rawMid = (tPrev + tNext) / 2;
+        const midRounded = Math.round(rawMid / 5) * 5;
+        if (midRounded > tPrev && midRounded < tNext) {
+          const h = Math.min(23, Math.floor(midRounded / 60));
+          const m = midRounded % 60;
+          return {
+            hour: String(h).padStart(2, "0"),
+            minute: String(m).padStart(2, "0"),
+          };
+        }
+      }
+      const mid = Math.floor((tPrev + tNext) / 2);
+      const h = Math.min(23, Math.floor(mid / 60));
+      const m = mid % 60;
+      return {
+        hour: String(h).padStart(2, "0"),
+        minute: String(m).padStart(2, "0"),
+      };
+    } else {
+      const nextTime = Math.min(23 * 60 + 55, tPrev + 30);
+      const h = Math.floor(nextTime / 60);
+      const m = nextTime % 60;
+      return {
+        hour: String(h).padStart(2, "0"),
+        minute: String(m).padStart(2, "0"),
+      };
+    }
+  }
+
+  if (tPrev !== null) {
+    const nextTime = Math.min(23 * 60 + 55, tPrev + 120);
+    const h = Math.floor(nextTime / 60);
+    const m = nextTime % 60;
+    return {
+      hour: String(h).padStart(2, "0"),
+      minute: String(m).padStart(2, "0"),
+    };
+  }
+
+  if (tNext !== null) {
+    const prevTime = Math.max(0, tNext - 60);
+    const h = Math.floor(prevTime / 60);
+    const m = prevTime % 60;
+    return {
+      hour: String(h).padStart(2, "0"),
+      minute: String(m).padStart(2, "0"),
+    };
+  }
+
+  return { hour: "09", minute: "00" };
+}
+
+function createEmptyRow(
+  index: number,
+  timeOrHour?: { hour: string; minute: string } | string
+): BatchStopRow {
   let defaultHour = "09";
-  if (prevHour !== undefined) {
-    const h = parseInt(prevHour, 10);
+  let defaultMinute = "00";
+
+  if (typeof timeOrHour === "object" && timeOrHour !== null) {
+    defaultHour = timeOrHour.hour;
+    defaultMinute = timeOrHour.minute;
+  } else if (typeof timeOrHour === "string") {
+    const h = parseInt(timeOrHour, 10);
     if (!isNaN(h)) {
       defaultHour = String(Math.min(23, h + 2)).padStart(2, "0");
     }
@@ -68,7 +148,7 @@ function createEmptyRow(index: number, prevHour?: string): BatchStopRow {
   return {
     id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     hour: defaultHour,
-    minute: "00",
+    minute: defaultMinute,
     location: "",
     activity: "",
     currency: "JPY",
@@ -94,6 +174,7 @@ export default function BatchActivityModal({
   previousDayLastLocation,
   planId,
   initialMode,
+  initialInsertIndex = null,
   onSuccess,
 }: BatchActivityModalProps) {
   const router = useRouter();
@@ -151,12 +232,31 @@ export default function BatchActivityModal({
       setHighlightedIndex(-1);
 
       if (defaultMode === "edit" && existingActivities.length > 0) {
-        setRows(buildRowsFromExisting());
+        const baseRows = buildRowsFromExisting();
+        if (
+          typeof initialInsertIndex === "number" &&
+          initialInsertIndex >= 0 &&
+          initialInsertIndex <= baseRows.length
+        ) {
+          const prevRow = initialInsertIndex > 0 ? baseRows[initialInsertIndex - 1] : undefined;
+          const nextRow = initialInsertIndex < baseRows.length ? baseRows[initialInsertIndex] : undefined;
+          const time = calculateIntermediateTime(prevRow, nextRow);
+          const newRow = createEmptyRow(initialInsertIndex, time);
+          baseRows.splice(initialInsertIndex, 0, newRow);
+          setTimeout(() => {
+            const el = document.getElementById(`loc-input-${newRow.id}`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.focus();
+            }
+          }, 150);
+        }
+        setRows(baseRows);
       } else {
         setRows([createEmptyRow(0), createEmptyRow(1, "09")]);
       }
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, initialInsertIndex]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -380,9 +480,32 @@ export default function BatchActivityModal({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
   };
 
+  const handleInsertRow = (targetIndex: number) => {
+    let newRowId = "";
+    setRows((prev) => {
+      const prevRow = targetIndex > 0 ? prev[targetIndex - 1] : undefined;
+      const nextRow = targetIndex < prev.length ? prev[targetIndex] : undefined;
+      const time = calculateIntermediateTime(prevRow, nextRow);
+      const newRow = createEmptyRow(targetIndex, time);
+      newRowId = newRow.id;
+      const nextRows = [...prev];
+      nextRows.splice(targetIndex, 0, newRow);
+      return nextRows;
+    });
+
+    setTimeout(() => {
+      if (newRowId) {
+        const el = document.getElementById(`loc-input-${newRowId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      }
+    }, 100);
+  };
+
   const handleAddRow = () => {
-    const lastRow = rows[rows.length - 1];
-    setRows((prev) => [...prev, createEmptyRow(prev.length, lastRow?.hour)]);
+    handleInsertRow(rows.length);
   };
 
   const handleRemoveRow = (id: string) => {
@@ -595,6 +718,20 @@ export default function BatchActivityModal({
 
         {/* Scrollable Rows Container */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {rows.length > 0 && (
+            <div className="flex justify-end -mb-1">
+              <button
+                type="button"
+                onClick={() => handleInsertRow(0)}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-muted hover:text-accent hover:bg-accent/10 border border-border/50 hover:border-accent/30 transition-all flex items-center gap-1 cursor-pointer bg-bg-surface/60 shadow-xs"
+                title={t("insertStopBeforeFirst")}
+              >
+                <Plus className="w-3 h-3 text-accent" />
+                <span>{t("insertStopBeforeFirst")}</span>
+              </button>
+            </div>
+          )}
+
           {rows.length === 0 ? (
             <div className="py-12 text-center text-text-muted flex flex-col items-center justify-center space-y-3 bg-bg-surface/50 border border-dashed border-border rounded-2xl">
               <p className="text-xs font-semibold text-text-secondary">{t("noStopsAdded")}</p>
@@ -612,71 +749,80 @@ export default function BatchActivityModal({
               const isDropdownOpen = activeDropdownRowId === row.id;
 
               return (
-                <div
-                  key={row.id}
-                className="bg-bg-surface border border-border/80 rounded-2xl p-4 transition-all hover:border-accent/40 space-y-3 relative shadow-sm"
-              >
-                {/* Row Header: Number + Quick Time + Delete */}
-                <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-accent text-white text-xs font-bold font-mono">
-                      #{idx + 1}
-                    </span>
-                    <span className="text-xs font-bold text-text-secondary">
-                      {t("stopNumber")} {idx + 1}
-                    </span>
-                  </div>
+                <div key={row.id} className="space-y-4">
+                  <div className="bg-bg-surface border border-border/80 rounded-2xl p-4 transition-all hover:border-accent/40 space-y-3 relative shadow-sm">
+                    {/* Row Header: Number + Quick Time + Delete */}
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-accent text-white text-xs font-bold font-mono">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-xs font-bold text-text-secondary">
+                          {t("stopNumber")} {idx + 1}
+                        </span>
+                      </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Direct Typed Hour : Minute Inputs */}
-                    <div className="flex items-center gap-1 bg-bg-base border border-border rounded-xl px-2.5 py-1 focus-within:border-accent">
-                      <Clock className="w-3.5 h-3.5 text-accent/70 mr-0.5" />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={2}
-                        value={row.hour}
-                        onChange={(e) => handleHourChange(row.id, e.target.value)}
-                        onBlur={(e) => handleHourBlur(row.id, e.target.value)}
-                        placeholder="09"
-                        className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
-                      />
-                      <span className="font-bold text-text-muted font-mono text-xs">:</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={2}
-                        value={row.minute}
-                        onChange={(e) => handleMinuteChange(row.id, e.target.value)}
-                        onBlur={(e) => handleMinuteBlur(row.id, e.target.value)}
-                        placeholder="00"
-                        className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
-                      />
+                      <div className="flex items-center gap-2">
+                        {/* Direct Typed Hour : Minute Inputs */}
+                        <div className="flex items-center gap-1 bg-bg-base border border-border rounded-xl px-2.5 py-1 focus-within:border-accent">
+                          <Clock className="w-3.5 h-3.5 text-accent/70 mr-0.5" />
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={2}
+                            value={row.hour}
+                            onChange={(e) => handleHourChange(row.id, e.target.value)}
+                            onBlur={(e) => handleHourBlur(row.id, e.target.value)}
+                            placeholder="09"
+                            className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
+                          />
+                          <span className="font-bold text-text-muted font-mono text-xs">:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={2}
+                            value={row.minute}
+                            onChange={(e) => handleMinuteChange(row.id, e.target.value)}
+                            onBlur={(e) => handleMinuteBlur(row.id, e.target.value)}
+                            placeholder="00"
+                            className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Insert Stop After This Card Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleInsertRow(idx + 1)}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent/10 transition-colors cursor-pointer"
+                          title={t("insertStopAfter")}
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Stop Button */}
+                        <button
+                          type="button"
+                          disabled={mode === "create" && rows.length <= 1}
+                          onClick={() => handleRemoveRow(row.id)}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 cursor-pointer"
+                          title={t("removeStop")}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Delete Stop Button */}
-                    <button
-                      type="button"
-                      disabled={mode === "create" && rows.length <= 1}
-                      onClick={() => handleRemoveRow(row.id)}
-                      className="p-1.5 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 cursor-pointer"
-                      title={t("removeStop")}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Primary Inputs: Location & Activity */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Location with Fuzzy Search Dropdown */}
-                  <div>
-                    <label className={labelClass}>
-                      <MapPin className="w-3 h-3 text-accent" /> {t("locationPlace")} *
-                    </label>
-                    <div className="relative" data-location-dropdown-wrapper={row.id}>
-                      <input
-                        type="text"
+                    {/* Primary Inputs: Location & Activity */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Location with Fuzzy Search Dropdown */}
+                      <div>
+                        <label className={labelClass}>
+                          <MapPin className="w-3 h-3 text-accent" /> {t("locationPlace")} *
+                        </label>
+                        <div className="relative" data-location-dropdown-wrapper={row.id}>
+                          <input
+                            id={`loc-input-${row.id}`}
+                            type="text"
                         value={row.location}
                         onChange={(e) => {
                           updateRow(row.id, { location: e.target.value });
@@ -894,8 +1040,33 @@ export default function BatchActivityModal({
                   </div>
                 </div>
               </div>
-            );
-          })
+
+              {/* In-between Insert Divider Button */}
+              {idx < rows.length - 1 && (
+                <div className="relative flex items-center justify-center my-1 group/insert">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertRow(idx + 1)}
+                    className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-surface hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs group-hover/insert:scale-105 cursor-pointer"
+                    title={t("insertStopBetween")
+                      .replace("{prev}", String(idx + 1))
+                      .replace("{next}", String(idx + 2))}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
+                    <span>
+                      {t("insertStopBetween")
+                        .replace("{prev}", String(idx + 1))
+                        .replace("{next}", String(idx + 2))}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })
         )}
 
           {/* Add Another Stop Button */}

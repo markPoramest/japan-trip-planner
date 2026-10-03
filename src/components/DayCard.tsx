@@ -1,21 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatJPY } from "@/lib/utils";
-import { Calendar, CreditCard, Banknote, ArrowRight, Loader2, Edit2, Check, X, Plus } from "lucide-react";
+import { Calendar, CreditCard, Banknote, ArrowRight, Loader2, Edit2, Check, X } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { updateTripDay } from "@/lib/actions";
-import BatchActivityModal from "./BatchActivityModal";
 
 interface DayCardProps {
   tripId: string;
   isOwner?: boolean;
   index?: number;
-  exchangeRate?: number;
-  availablePasses?: string[];
-  previousLocations?: { name: string; count?: number }[] | string[];
-  previousDayLastLocation?: string;
   day: {
     id: string;
     dayNumber: number;
@@ -57,18 +52,19 @@ export default function DayCard({
   tripId,
   isOwner = false,
   index = 0,
-  exchangeRate = 0.24,
-  availablePasses = [],
-  previousLocations = [],
-  previousDayLastLocation,
 }: DayCardProps) {
   const { t, language } = useLanguage();
   const [navigating, setNavigating] = useState(false);
-  const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [dayTitle, setDayTitle] = useState(day.title);
   const [inputTitle, setInputTitle] = useState(day.title);
   const [currentSlug, setCurrentSlug] = useState(day.slug);
+
+  useEffect(() => {
+    setDayTitle(day.title);
+    setInputTitle(day.title);
+    setCurrentSlug(day.slug);
+  }, [day.title, day.slug]);
 
   const mainPlan = day.plans?.find((p) => p.isMain) || day.plans?.[0];
   const activeActivities = mainPlan ? mainPlan.activities : day.activities;
@@ -130,8 +126,7 @@ export default function DayCard({
   }
 
   return (
-    <>
-      <Link
+    <Link
         href={`/trips/${tripId}/days/${currentSlug}`}
         onClick={(e) => {
           if (isEditingTitle) {
@@ -161,20 +156,6 @@ export default function DayCard({
               <span className="text-xs font-medium text-text-faint bg-bg-surface px-2 py-0.5 rounded-full border border-border/60">
                 {activeActivities.length} {t("stops")}
               </span>
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setBatchModalOpen(true);
-                  }}
-                  className="p-1 rounded-lg bg-bg-surface hover:bg-accent/15 border border-border/80 hover:border-accent/40 text-text-muted hover:text-accent transition-all cursor-pointer flex items-center justify-center shadow-xs"
-                  title={t("batchAddActivities")}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
           </div>
 
@@ -282,22 +263,5 @@ export default function DayCard({
           </div>
         </div>
       </Link>
-
-      {isOwner && (
-        <BatchActivityModal
-          isOpen={batchModalOpen}
-          onClose={() => setBatchModalOpen(false)}
-          dayId={day.id}
-          dayNumber={day.dayNumber}
-          dayTitle={dayTitle}
-          exchangeRate={exchangeRate}
-          availablePasses={availablePasses}
-          previousLocations={previousLocations}
-          existingActivities={activeActivities}
-          previousDayLastLocation={previousDayLastLocation}
-          planId={mainPlan?.id}
-        />
-      )}
-    </>
   );
 }

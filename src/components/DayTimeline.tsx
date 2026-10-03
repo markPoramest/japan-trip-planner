@@ -134,6 +134,7 @@ export default function DayTimeline({
   // Modals state
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchModalMode, setBatchModalMode] = useState<"create" | "edit">("create");
+  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
 
   // Day Title Editing State
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -208,6 +209,24 @@ export default function DayTimeline({
     }, 3500);
     return () => clearTimeout(timer);
   }, [toastMessage]);
+
+  // Lock body scroll when any modal or overlay is open
+  useEffect(() => {
+    const isAnyModalOpen =
+      createPlanModalOpen ||
+      editPlanModalOpen ||
+      swapModalOpen ||
+      deletePlanModalOpen ||
+      isSwapping;
+
+    if (isAnyModalOpen) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [createPlanModalOpen, editPlanModalOpen, swapModalOpen, deletePlanModalOpen, isSwapping]);
 
   // Cost calculation for the currently active plan view
   const totalCost = currentActivities.reduce((sum, a) => sum + (a.cost || 0), 0);
@@ -821,82 +840,132 @@ export default function DayTimeline({
             )}
           </div>
         ) : (
-          currentActivities.map((activity, idx) => {
-            const linkMatch = activity.remark ? activity.remark.match(/https?:\/\/[^\s]+/) : null;
-            const linkUrl = linkMatch ? linkMatch[0] : null;
+          <>
+            {isOwner && currentActivities.length > 0 && (
+              <div className="flex justify-end -mb-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInsertAtIndex(0);
+                    setBatchModalMode("edit");
+                    setBatchModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-muted hover:text-accent hover:bg-accent/10 border border-border/50 hover:border-accent/30 transition-all flex items-center gap-1 cursor-pointer bg-bg-card shadow-xs"
+                  title={t("insertStopBeforeFirst")}
+                >
+                  <Plus className="w-3 h-3 text-accent" />
+                  <span>{t("insertStopBeforeFirst")}</span>
+                </button>
+              </div>
+            )}
 
-            return (
-              <div
-                key={activity.id}
-                className="bg-bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-accent/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-card group"
-              >
-                {/* Time & Activity Details */}
-                <div className="flex items-start gap-3 sm:gap-4 flex-1">
-                  <div className="flex flex-col items-center flex-shrink-0">
-                    <span className="px-2.5 py-1 rounded-lg bg-bg-surface border border-border text-xs font-mono font-bold text-accent">
-                      {activity.time}
-                    </span>
-                  </div>
+            {currentActivities.map((activity, idx) => {
+              const linkMatch = activity.remark ? activity.remark.match(/https?:\/\/[^\s]+/) : null;
+              const linkUrl = linkMatch ? linkMatch[0] : null;
 
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-text-primary text-sm sm:text-base">
-                        {activity.location}
-                      </span>
-                      {activity.usingPass && (
-                        <span className="px-2 py-0.5 rounded-full bg-olive-subtle border border-olive-muted text-olive text-[11px] font-medium flex items-center gap-1">
-                          <Train className="w-3 h-3" /> {activity.usingPass}
+              return (
+                <div key={activity.id} className="space-y-4">
+                  <div className="bg-bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-accent/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-card group">
+                    {/* Time & Activity Details */}
+                    <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <span className="px-2.5 py-1 rounded-lg bg-bg-surface border border-border text-xs font-mono font-bold text-accent">
+                          {activity.time}
                         </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      {activity.activity}
-                    </p>
-                    {activity.remark && (
-                      <div className="text-[11px] text-text-muted flex items-center gap-1 pt-0.5">
-                        {linkUrl ? (
-                          <a
-                            href={linkUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-accent hover:underline flex items-center gap-1"
-                          >
-                            <ExternalLink className="w-3 h-3" /> {activity.remark}
-                          </a>
-                        ) : (
-                          <span>{activity.remark}</span>
+                      </div>
+
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-text-primary text-sm sm:text-base">
+                            {activity.location}
+                          </span>
+                          {activity.usingPass && (
+                            <span className="px-2 py-0.5 rounded-full bg-olive-subtle border border-olive-muted text-olive text-[11px] font-medium flex items-center gap-1">
+                              <Train className="w-3 h-3" /> {activity.usingPass}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-secondary leading-relaxed">
+                          {activity.activity}
+                        </p>
+                        {activity.remark && (
+                          <div className="text-[11px] text-text-muted flex items-center gap-1 pt-0.5">
+                            {linkUrl ? (
+                              <a
+                                href={linkUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent hover:underline flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" /> {activity.remark}
+                              </a>
+                            ) : (
+                              <span>{activity.remark}</span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Cost & Action Controls */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 font-bold text-sm font-mono text-text-primary">
-                      {activity.isIcCard && (
-                        <span title="Paid with IC Card">
-                          <CreditCard className="w-3.5 h-3.5 text-sage" />
-                        </span>
-                      )}
-                      <span>{formatJPY(activity.cost || 0)}</span>
-                    </div>
-                    <div className="text-[10px] text-text-muted font-mono">
-                      ≈ {formatTHB((activity.cost || 0) * exchangeRate)}
+                    {/* Cost & Action Controls */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 font-bold text-sm font-mono text-text-primary">
+                          {activity.isIcCard && (
+                            <span title="Paid with IC Card">
+                              <CreditCard className="w-3.5 h-3.5 text-sage" />
+                            </span>
+                          )}
+                          <span>{formatJPY(activity.cost || 0)}</span>
+                        </div>
+                        <div className="text-[10px] text-text-muted font-mono">
+                          ≈ {formatTHB((activity.cost || 0) * exchangeRate)}
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* In-between Insert Divider Button */}
+                  {isOwner && idx < currentActivities.length - 1 && (
+                    <div className="relative flex items-center justify-center my-1 group/insert">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInsertAtIndex(idx + 1);
+                          setBatchModalMode("edit");
+                          setBatchModalOpen(true);
+                        }}
+                        className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-card hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs group-hover/insert:scale-105 cursor-pointer opacity-80 group-hover/insert:opacity-100"
+                        title={t("insertStopBetween")
+                          .replace("{prev}", String(idx + 1))
+                          .replace("{next}", String(idx + 2))}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
+                        <span>
+                          {t("insertStopBetween")
+                            .replace("{prev}", String(idx + 1))
+                            .replace("{next}", String(idx + 2))}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </>
         )}
       </div>
 
       {/* Batch Activity Modal (targets currently active plan) */}
       <BatchActivityModal
         isOpen={batchModalOpen}
-        onClose={() => setBatchModalOpen(false)}
+        onClose={() => {
+          setBatchModalOpen(false);
+          setInsertAtIndex(null);
+        }}
         dayId={dayId}
         dayNumber={dayNumber}
         dayTitle={
@@ -911,6 +980,7 @@ export default function DayTimeline({
         previousDayLastLocation={previousDayLastLocation}
         planId={activePlan.id}
         initialMode={batchModalMode}
+        initialInsertIndex={insertAtIndex}
         onSuccess={() => showToast(t("batchSaveSuccess"))}
       />
 

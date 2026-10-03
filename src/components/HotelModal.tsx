@@ -62,6 +62,17 @@ export default function HotelModal({
     setMounted(true);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (hotel && isOpen) {
       setName(hotel.name || "");

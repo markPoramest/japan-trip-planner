@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TripStats from "@/components/TripStats";
@@ -10,6 +10,7 @@ import PassCard from "@/components/PassCard";
 import BudgetBreakdown from "@/components/BudgetBreakdown";
 import EditTripModal from "@/components/EditTripModal";
 import ShareTripModal from "@/components/ShareTripModal";
+import SwapDayModal from "@/components/SwapDayModal";
 import { deleteTrip } from "@/lib/actions";
 import {
   Sparkles,
@@ -25,6 +26,7 @@ import {
   Globe,
   Lock,
   Instagram,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -79,27 +81,68 @@ export default function TripOverviewClient({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [swapInitialDayId, setSwapInitialDayId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [localDays, setLocalDays] = useState(trip.days);
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
 
-  const previousLocations = useMemo(() => {
-    const locMap = new Map<string, number>();
-    for (const d of trip.days) {
-      for (const a of d.activities) {
-        if (a.location && a.location.trim()) {
-          const loc = a.location.trim();
-          locMap.set(loc, (locMap.get(loc) || 0) + 1);
-        }
-      }
-    }
-    return Array.from(locMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+  useEffect(() => {
+    setLocalDays(trip.days);
   }, [trip.days]);
 
-  const availablePasses = useMemo(() => {
-    return (trip.passes || []).map((p: any) => p.name || p.passName).filter(Boolean);
-  }, [trip.passes]);
+  // Lock body scroll when delete confirmation modal is open
+  useEffect(() => {
+    if (showDeleteModal) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [showDeleteModal]);
+
+  function handleOptimisticSwap(dayIdA: string, dayIdB: string) {
+    setLocalDays((prevDays) => {
+      const idxA = prevDays.findIndex((d) => d.id === dayIdA);
+      const idxB = prevDays.findIndex((d) => d.id === dayIdB);
+      if (idxA === -1 || idxB === -1) return prevDays;
+
+      const dayA = prevDays[idxA];
+      const dayB = prevDays[idxB];
+
+      const cleanA = dayA.title.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-").substring(0, 30).replace(/-$/, "");
+      const cleanB = dayB.title.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-").substring(0, 30).replace(/-$/, "");
+      const newSlugA = dayA.slug.match(/^day-\d+/)
+        ? dayA.slug.replace(/^day-\d+/, `day-${dayB.dayNumber}`)
+        : `day-${dayB.dayNumber}-${cleanA || "day"}`;
+      const newSlugB = dayB.slug.match(/^day-\d+/)
+        ? dayB.slug.replace(/^day-\d+/, `day-${dayA.dayNumber}`)
+        : `day-${dayA.dayNumber}-${cleanB || "day"}`;
+
+      const updatedA = {
+        ...dayA,
+        dayNumber: dayB.dayNumber,
+        date: dayB.date,
+        dayOfWeek: dayB.dayOfWeek,
+        slug: newSlugA,
+      };
+      const updatedB = {
+        ...dayB,
+        dayNumber: dayA.dayNumber,
+        date: dayA.date,
+        dayOfWeek: dayA.dayOfWeek,
+        slug: newSlugB,
+      };
+
+      const newDays = [...prevDays];
+      newDays[idxA] = updatedB;
+      newDays[idxB] = updatedA;
+      newDays.sort((a, b) => a.dayNumber - b.dayNumber);
+      return newDays;
+    });
+  }
+
 
   const startStr = new Date(trip.startDate).toLocaleDateString(dateLocale, {
     day: "numeric",
@@ -297,39 +340,37 @@ export default function TripOverviewClient({
               {t("dailySchedule")}
             </h2>
             <p className="text-xs text-text-muted mt-0.5">
-              {trip.days.length} {t("daysPlanned")}
+              {localDays.length} {t("daysPlanned")}
             </p>
           </div>
+          {isOwner && localDays.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSwapInitialDayId(null);
+                setSwapModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-card hover:bg-accent/10 border border-border hover:border-accent/40 text-text-secondary hover:text-accent text-xs font-semibold shadow-xs transition-all cursor-pointer"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-accent" />
+              <span>{t("swapDays")}</span>
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trip.days.map((day, idx) => {
-            let prevDayLastLocation: string | undefined = undefined;
-            if (idx > 0) {
-              const prevDay = trip.days[idx - 1];
-              const prevMainPlan = prevDay?.plans?.find((p: any) => p.isMain) || prevDay?.plans?.[0];
-              const prevActs = prevMainPlan ? prevMainPlan.activities : (prevDay?.activities || []);
-              if (prevActs.length > 0) {
-                prevDayLastLocation = prevActs[prevActs.length - 1]?.location;
-              }
-            }
-            return (
-              <DayCard
-                key={day.id}
-                day={{
-                  ...day,
-                  date: typeof day.date === "string" ? new Date(day.date) : day.date,
-                }}
-                tripId={trip.id}
-                isOwner={isOwner}
-                index={idx}
-                exchangeRate={trip.exchangeRate}
-                availablePasses={availablePasses}
-                previousLocations={previousLocations}
-                previousDayLastLocation={prevDayLastLocation}
-              />
-            );
-          })}
+          {localDays.map((day, idx) => (
+            <DayCard
+              key={`${day.id}-${day.dayNumber}`}
+              day={{
+                ...day,
+                date: typeof day.date === "string" ? new Date(day.date) : day.date,
+              }}
+              tripId={trip.id}
+              isOwner={isOwner}
+              index={idx}
+            />
+          ))}
         </div>
       </section>
 
@@ -417,6 +458,18 @@ export default function TripOverviewClient({
           flights: trip.flights,
         }}
       />
+
+      {/* Swap Day Itinerary Modal */}
+      {swapModalOpen && (
+        <SwapDayModal
+          isOpen={swapModalOpen}
+          onClose={() => setSwapModalOpen(false)}
+          tripId={trip.id}
+          days={localDays}
+          initialDayId={swapInitialDayId}
+          onOptimisticSwap={handleOptimisticSwap}
+        />
+      )}
     </main>
   );
 }

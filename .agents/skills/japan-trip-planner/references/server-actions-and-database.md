@@ -77,6 +77,8 @@ All functions are marked `"use server"` and handle error propagation and path re
 - `updateDayPlan(planId: string, title: string, tag?: string, notes?: string)`: Renames or updates a plan.
 - `deleteDayPlan(planId: string)`: Deletes a substitute plan and associated activities. Disallows deleting the main plan.
 - `swapMainPlan(dayId: string, newMainPlanId: string)`: Sets the previous main plan to `isMain: false` and `newMainPlanId` to `isMain: true` within a database transaction.
+- `swapTripDays(tripId: string, dayIdA: string, dayIdB: string)`: Exchanges day numbers, dates, and slugs atomically between two days while preserving their respective itineraries and activities.
+
 
 ### Activity Operations
 - `createActivity(dayId: string, planId: string, data: ActivityInput)`: Creates activity linked to specific plan.

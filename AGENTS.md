@@ -55,6 +55,7 @@ japan-trip/
 │   │   ├── BatchActivityModal.tsx # Rapid batch entry for activities
 │   │   ├── ExportItineraryView.tsx # Export view (MAIN plan only)
 │   │   ├── ShareTripModal.tsx # 9:16 Instagram Story generator & share link modal
+│   │   ├── SwapDayModal.tsx  # Modal to swap itinerary plans between two days
 │   │   └── skeletons/        # Skeleton loaders for instant route transitions
 │   ├── context/
 │   │   ├── LanguageContext.tsx # Bilingual context (en / th)
@@ -125,6 +126,22 @@ japan-trip/
   - **Column 1 (Left - Priority/Main KPI)**: `Grand Total Estimated` occupies `lg:col-span-4` with prominent accent styling, wallet icon, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") subtitle.
   - **Column 2 (Right - Sub-categories Row)**: The 4 breakdown components (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) are placed in `lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4` as a neat horizontal row across from Grand Total.
 - **Matched Loading Skeleton**: [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) exactly mirrors the 2-column (Col 1 Grand Total + Col 2 4-card sub row) layout to guarantee zero layout shift on route transitions.
+
+### H. Day Itinerary Swapping ([SwapDayModal.tsx](./src/components/SwapDayModal.tsx) & `swapTripDays` in [src/lib/actions.ts](./src/lib/actions.ts))
+- **Calendar-Safe Swapping**: Allows users to exchange itineraries and activities between any two days (e.g. Day 2 and Day 3) while keeping calendar dates and day numbers strictly sequential.
+- **Atomic Mutation**: `swapTripDays(tripId, dayIdA, dayIdB)` updates `dayNumber`, `date`, `dayOfWeek`, and `slug` atomically in a Prisma transaction without altering nested plan or activity foreign keys.
+- **Optimistic UI in [TripOverviewClient.tsx](./src/components/TripOverviewClient.tsx)**: Local state `localDays` swaps instantly on confirm with 0ms visual latency, followed by non-blocking `startTransition(() => router.refresh())`.
+- **Trigger Points**: Accessible via the `⇄ Swap Days` (`⇄ สลับวันเดินทาง`) button in the Daily Schedule section header. Individual `DayCard` headers maintain a clean presentation with only the stop count badge (no cluttered action buttons).
+
+### I. Modal Body Scroll Locking Invariant
+- Every modal and full-screen dialog ([SwapDayModal.tsx](./src/components/SwapDayModal.tsx), [BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx), [ShareTripModal.tsx](./src/components/ShareTripModal.tsx), [EditTripModal.tsx](./src/components/EditTripModal.tsx), [HotelModal.tsx](./src/components/HotelModal.tsx), [PassModal.tsx](./src/components/PassModal.tsx), [FlightModal.tsx](./src/components/FlightModal.tsx), [EditBudgetModal.tsx](./src/components/EditBudgetModal.tsx), [ActivityFormModal.tsx](./src/components/ActivityFormModal.tsx), and deletion modals) MUST lock `document.body.style.overflow = "hidden"` on open and restore on cleanup to prevent background mouse wheel scrolling.
+
+### J. In-between Stop & Activity Insertion ([BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx) & [DayTimeline.tsx](./src/components/DayTimeline.tsx))
+- **Arbitrary Insertion**: Users can insert a new stop at any position in the day schedule (e.g. between Stop 3 and Stop 4, before Stop 1, or after any stop).
+- **Smart Midpoint Time Calculation**: `calculateIntermediateTime(prevRow, nextRow)` calculates the intermediate time between two adjacent stops (e.g. 10:20 and 13:00 -> 11:40) with 5-minute rounding and auto-scrolls/focuses the new stop's location input.
+- **Entry Points**:
+  - Inside [BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx): In-between dashed divider buttons (`+ แทรกจุดแวะระหว่าง #{prev} กับ #{next}` / `+ Insert stop between #{prev} and #{next}`), card header `+` action, top-of-day insert button, and bottom append button.
+  - On [DayTimeline.tsx](./src/components/DayTimeline.tsx): In-between insert divider buttons directly on the timeline view open the modal with `initialInsertIndex` pre-configured.
 
 ---
 
