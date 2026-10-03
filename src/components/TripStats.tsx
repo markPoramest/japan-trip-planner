@@ -34,6 +34,11 @@ export default function TripStats({
   const totalTripEstimatedThb = totalActivitiesCostJpy * rate + fixedExpensesThb;
   const totalTripEstimatedJpy = totalActivitiesCostJpy + hotelJpy + totalPassJpy + flightJpy;
 
+  const flightPercent = totalTripEstimatedThb > 0 ? Math.round((totalFlightThb / totalTripEstimatedThb) * 100) : 0;
+  const hotelPercent = totalTripEstimatedThb > 0 ? Math.round((totalHotelThb / totalTripEstimatedThb) * 100) : 0;
+  const passPercent = totalTripEstimatedThb > 0 ? Math.round(((totalPassJpy * rate) / totalTripEstimatedThb) * 100) : 0;
+  const everydayPercent = totalTripEstimatedThb > 0 ? Math.round(((totalActivitiesCostJpy * rate) / totalTripEstimatedThb) * 100) : 0;
+
   const subCards = [
     // 1. Flight
     {
@@ -42,6 +47,9 @@ export default function TripStats({
       sub: `≈ ${formatJPY(flightJpy)}`,
       icon: Plane,
       iconBg: "bg-sage-subtle border-sage-muted text-sage",
+      percent: flightPercent,
+      badgeClass: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20",
+      barGradient: "bg-gradient-to-r from-teal-400 to-teal-500",
     },
     // 2. Hotel
     {
@@ -50,6 +58,9 @@ export default function TripStats({
       sub: `≈ ${formatJPY(hotelJpy)}`,
       icon: Hotel,
       iconBg: "bg-sand-subtle border-sand-muted text-sand",
+      percent: hotelPercent,
+      badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+      barGradient: "bg-gradient-to-r from-amber-400 to-amber-500",
     },
     // 3. Passes, Rentals & Tickets
     {
@@ -58,6 +69,9 @@ export default function TripStats({
       sub: `≈ ${formatTHB(totalPassJpy * rate)}`,
       icon: Ticket,
       iconBg: "bg-olive-subtle border-olive-muted text-olive",
+      percent: passPercent,
+      badgeClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
+      barGradient: "bg-gradient-to-r from-indigo-400 to-indigo-500",
     },
     // 4. Total Cost Everyday (Activities)
     {
@@ -66,6 +80,9 @@ export default function TripStats({
       sub: `≈ ${formatTHB(totalActivitiesCostJpy * rate)}`,
       icon: CircleDollarSign,
       iconBg: "bg-accent/10 border-accent/20 text-accent",
+      percent: everydayPercent,
+      badgeClass: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20",
+      barGradient: "bg-gradient-to-r from-orange-400 to-orange-500",
     },
   ];
 
@@ -127,6 +144,19 @@ export default function TripStats({
                 </div>
                 <div className="text-xs text-text-muted mt-1 font-mono">
                   {card.sub}
+                </div>
+
+                {/* Spend Progress Bar & Percentage Pill */}
+                <div className="flex items-center gap-2 pt-2.5 mt-2.5 border-t border-border/40">
+                  <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${card.badgeClass}`}>
+                    {card.percent}%
+                  </span>
+                  <div className="flex-1 h-1.5 rounded-full bg-border/40 dark:bg-bg-surface overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${card.barGradient} transition-all duration-500`}
+                      style={{ width: `${Math.min(100, Math.max(0, card.percent))}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

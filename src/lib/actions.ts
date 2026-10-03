@@ -674,6 +674,41 @@ export async function deleteSubstitutePlan(planId: string) {
 // ACTIVITY CRUD
 // ─────────────────────────────────────────────
 
+function parseTimeToMinutes(t?: string | null): number {
+  if (!t) return 24 * 60;
+  const parts = t.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h)) return 24 * 60;
+  return h * 60 + (isNaN(m) ? 0 : m);
+}
+
+async function resequenceActivitiesByTime(planId?: string | null, dayId?: string) {
+  const activities = await db.dayActivity.findMany({
+    where: planId ? { planId } : { dayId },
+    select: { id: true, time: true, sortOrder: true },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const sorted = [...activities]
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => {
+      const diff = parseTimeToMinutes(a.item.time) - parseTimeToMinutes(b.item.time);
+      if (diff !== 0) return diff;
+      return a.originalIndex - b.originalIndex;
+    })
+    .map((x) => x.item);
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].sortOrder !== i) {
+      await db.dayActivity.update({
+        where: { id: sorted[i].id },
+        data: { sortOrder: i },
+      });
+    }
+  }
+}
+
 export async function createActivity(dayId: string, data: {
   time: string;
   location: string;
@@ -731,6 +766,9 @@ export async function createActivity(dayId: string, data: {
     },
     include: { day: true },
   });
+
+  // Automatically resequence stops in chronological order by time
+  await resequenceActivitiesByTime(targetPlanId, dayId);
 
   revalidatePath(`/trips/${newActivity.day.tripId}/days/${newActivity.day.slug}`);
   revalidatePath(`/trips/${newActivity.day.tripId}`);
@@ -801,6 +839,9 @@ export async function createActivitiesBatch(
     data: activitiesData,
   });
 
+  // Automatically resequence all activities in chronological order by time
+  await resequenceActivitiesByTime(targetPlanId, dayId);
+
   if (day) {
     revalidatePath(`/trips/${day.tripId}/days/${day.slug}`);
     revalidatePath(`/trips/${day.tripId}`);
@@ -855,6 +896,16 @@ export async function saveActivitiesBatch(
     }
   }
 
+  // Sort items chronologically by time (preserving original relative order for identical times)
+  const sortedItems = [...data.items]
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => {
+      const diff = parseTimeToMinutes(a.item.time) - parseTimeToMinutes(b.item.time);
+      if (diff !== 0) return diff;
+      return a.originalIndex - b.originalIndex;
+    })
+    .map((x) => x.item);
+
   await db.$transaction(async (tx) => {
     // 1. Delete removed activities
     if (data.deletedIds && data.deletedIds.length > 0) {
@@ -866,9 +917,9 @@ export async function saveActivitiesBatch(
       });
     }
 
-    // 2. Process items (update existing or create new)
-    for (let i = 0; i < data.items.length; i++) {
-      const item = data.items[i];
+    // 2. Process items (update existing or create new) in chronological order
+    for (let i = 0; i < sortedItems.length; i++) {
+      const item = sortedItems[i];
       if (item.id && !item.id.startsWith("row-")) {
         // Update existing activity
         await tx.dayActivity.update({
@@ -933,6 +984,11 @@ export async function updateActivity(id: string, data: {
     },
     include: { day: true },
   });
+
+  // If time was updated, resequence all activities in that plan/day chronologically
+  if (data.time !== undefined) {
+    await resequenceActivitiesByTime(updated.planId, updated.dayId);
+  }
 
   revalidatePath(`/trips/${updated.day.tripId}/days/${updated.day.slug}`);
   revalidatePath(`/trips/${updated.day.tripId}`);

@@ -47,7 +47,7 @@ japan-trip/
 │   │   │       ├── export/   # Print & PNG itinerary view (ExportItineraryView)
 │   │   │       └── days/[slug]/ # Detailed day itinerary & timeline (DayTimeline)
 │   ├── components/           # Reusable UI components
-│   │   ├── DayTimeline.tsx   # Day timeline, plan tabs (Main/Substitutes), optimistic plan swapping
+│   │   ├── DayTimeline.tsx   # Day timeline, plan tabs (Main/Substitutes), unified "Manage Stops" button, optimistic plan swapping
 │   │   ├── DayCard.tsx       # Day overview card on trip dashboard
 │   │   ├── TripStats.tsx     # Financial summary cards (Col 1 Grand Total priority + Col 2 sub-category row)
 │   │   ├── HotelModal.tsx    # Hotel booking create/edit modal
@@ -96,6 +96,7 @@ japan-trip/
   - `localPlans` state is updated immediately on swap, delete, or rename.
   - An animated full-screen portal loading overlay (`isSwapping`) covers the screen during server processing to prevent visual glitches.
   - Dynamic elements in DayTimeline do NOT have `data-aos` attributes to avoid repeated re-animation artifacts.
+  - **Streamlined Header & Tabs Bar**: The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner has been eliminated. The "Edit Plan Name" action is integrated directly into the plan tabs toolbar alongside `{substituteCount} / 3`, cutting unnecessary vertical space.
 - **Export, Overview & Summary Views**: Only `isMain: true` plans must be shown on the export page ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx)), summary pages, overview cards ([DayCard.tsx](./src/components/DayCard.tsx) stop count badge and costs), and the Instagram Story generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx)). Never aggregate substitute plan activities into trip or day totals.
 
 ### C. Bilingual i18n (English & Thai)
@@ -125,7 +126,8 @@ japan-trip/
 - **Two-Column Priority Structure**:
   - **Column 1 (Left - Priority/Main KPI)**: `Grand Total Estimated` occupies `lg:col-span-4` with prominent accent styling, wallet icon, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") subtitle.
   - **Column 2 (Right - Sub-categories Row)**: The 4 breakdown components (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) are placed in `lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4` as a neat horizontal row across from Grand Total.
-- **Matched Loading Skeleton**: [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) exactly mirrors the 2-column (Col 1 Grand Total + Col 2 4-card sub row) layout to guarantee zero layout shift on route transitions.
+  - **Spend Progress Bars & Percentage Badges**: Each of the 4 sub-category cards features a proportional spend progress bar and percentage pill (`%` of `totalTripEstimatedThb`) matching the visual design in `DayTimeline.tsx` (compact font-mono percentage badge + gradient progress bar).
+- **Matched Loading Skeleton**: [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) exactly mirrors the 2-column layout including shimmer placeholders for the progress bars to guarantee zero layout shift on route transitions.
 
 ### H. Day Itinerary Swapping ([SwapDayModal.tsx](./src/components/SwapDayModal.tsx) & `swapTripDays` in [src/lib/actions.ts](./src/lib/actions.ts))
 - **Calendar-Safe Swapping**: Allows users to exchange itineraries and activities between any two days (e.g. Day 2 and Day 3) while keeping calendar dates and day numbers strictly sequential.
@@ -142,6 +144,43 @@ japan-trip/
 - **Entry Points**:
   - Inside [BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx): In-between dashed divider buttons (`+ แทรกจุดแวะระหว่าง #{prev} กับ #{next}` / `+ Insert stop between #{prev} and #{next}`), card header `+` action, top-of-day insert button, and bottom append button.
   - On [DayTimeline.tsx](./src/components/DayTimeline.tsx): In-between insert divider buttons directly on the timeline view open the modal with `initialInsertIndex` pre-configured.
+
+### K. Unified "Manage Stops" Modal & Vertical Timeline UX ([DayTimeline.tsx](./src/components/DayTimeline.tsx) & [BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx))
+- **Single Entry Point**: The two separate buttons ("Edit Stops" and "Add Stop / Activity") are merged into one unified button in the day timeline header:
+  - When activities exist: displays as `✏️ Manage Stops · {count}` (`✏️ จัดการจุดแวะ · {count}`) with an embedded stop count pill badge, opening BatchActivityModal in **edit** mode.
+  - When no activities exist: displays as `+ Add Stop / Activity` (`+ เพิ่มสถานที่ / กิจกรรม`) with an animated pulsing indicator dot.
+- **Sleek Compact Header**:
+  - Compact single-line banner (`from-bg-surface via-bg-surface/95 to-accent/15`) with title, Day badge, Stops count pill (`📍 {count} stops`), and Time range pill (`🕒 {timeRange}`).
+  - Subtitle and duplicate header total cost removed for an ultra-clean, minimal header profile.
+- **Unified Add Stop Component Standard ("Add Another Stop" Principle)**:
+  - Both top (`+ Add first stop to start the day` / `+ แทรกจุดแวะแรกของวัน`) and bottom (`+ Add Another Stop` / `+ เพิ่มสถานที่ถัดไป`) buttons share the exact same full-width card-aligned component styling (`pl-11 sm:pl-14`, rounded-2xl dashed border `border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent font-bold`, `Plus` icon), creating clean visual symmetry at both ends of the schedule across both [BatchActivityModal.tsx](./src/components/BatchActivityModal.tsx) and [DayTimeline.tsx](./src/components/DayTimeline.tsx).
+- **Vertical Timeline Track & Clean 3-Row Stop Cards**:
+  - **Left Timeline Track**: Vertical dashed connecting lines with solid accent circle badges (`1`, `2`, `3`...) and scheduled times (`06:30`, `08:09`) directly underneath each node.
+  - **Right Stop Card**:
+    - Row 1: `Location / Place name *` (with fuzzy dropdown suggestions), `Activity / Details *`, and Time pill (`Clock` icon + `HH:MM` inputs) + Delete button (`Trash2`).
+    - Row 2: `Cost` (currency dropdown, amount, IC card checkbox) & `Rail Pass Used` (dropdown + custom input).
+    - Row 3: `Remarks / Links (URL)` full-width input.
+  - All fields are always visible without nested collapsibles or image columns.
+- **In-between Dividers**:
+  - Horizontal dashed divider between adjacent stop cards with centered `+ Add stop between #X and #Y` button.
+- **Docked Footer**:
+  - Left: `Clear All Stops` (`ล้างจุดแวะทั้งหมด`) with a custom in-app confirmation modal (no default browser `window.confirm` popups).
+  - Center: Total estimated cost in JPY & THB.
+  - Right: `Cancel` and `Save All Changes` buttons.
+- **Strict Required Field Validation & In-App Alerts**:
+  - Submitting with blank required fields (`Location` or `Activity`) blocks saving without disruptive browser alert popups; instead it immediately highlights invalid inputs with red borders (`* Required`) and smoothly scrolls and auto-focuses on the missing field. No stop rows are silently dropped.
+  - Zero browser `alert()` or `window.confirm()` dialogs: clearing all stops uses a dedicated in-app confirmation dialog, and server save errors render an inline dismissible error banner.
+- **Chronological Time Auto-sorting on Save**: Stops are automatically sorted chronologically by scheduled time upon saving (e.g. a stop at 18:00 moves before a stop at 18:30) with stable tie-breaking for identical times in `saveActivitiesBatch`, `createActivitiesBatch`, `createActivity`, and `updateActivity`.
+- **Translation Keys**: `manageStops`, `timeRange`, `batchModalSubtitle`, `clearAllStops`, `confirmClearAllStops`, `fieldRequired`, `viewBreakdown` in [src/lib/i18n.ts](./src/lib/i18n.ts).
+
+### L. Revamped Day Cost Stats Banner & Financial Breakdown ([DayTimeline.tsx](./src/components/DayTimeline.tsx))
+- **Horizontal Landscape Card Layout**:
+  - Encased in a warm beige/surface card (`bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs`).
+  - **Left Section (Total Day Cost)**: Circular double-ring coin badge with `Coins` icon (`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FCE8D3] ring-8 ring-[#FCE8D3]/50`), plan cost title (`Total Day Cost`), large bold font-mono JPY (`¥ 11,940`), and THB approx subtitle (`≈ ฿2,507.00`), with full breathing room and zero cramped elements.
+  - **Right Column (Two-Row Stacked Sub-categories)**: Both cost breakdown metrics are stacked in two rows within the same right column, permanently visible without toggle obstructions:
+    - **Row 1 (IC Card Spent)**: Green theme, `CreditCard` icon in `bg-emerald-500/10 text-emerald-600`, localized THB approx, percentage badge (`50%`), bold font-mono JPY (`¥ 5,940`), and horizontal gradient progress bar.
+    - **Row 2 (Cash & Credit Card)**: Orange theme, `Wallet` icon in `bg-orange-500/10 text-orange-600`, localized THB approx, percentage badge (`50%`), bold font-mono JPY (`¥ 6,000`), and horizontal gradient progress bar.
+  - Pure CSS/Tailwind + SVG Lucide icons without external image dependencies ("without image using").
 
 ---
 

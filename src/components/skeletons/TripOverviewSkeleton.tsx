@@ -58,6 +58,10 @@ export default function TripOverviewSkeleton() {
               <div className="space-y-1.5 mt-3">
                 <div className="w-20 h-6 skeleton-shimmer rounded-lg" />
                 <div className="w-16 h-3 skeleton-shimmer rounded" />
+                <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                  <div className="w-7 h-3.5 skeleton-shimmer rounded-md" />
+                  <div className="flex-1 h-1.5 skeleton-shimmer rounded-full" />
+                </div>
               </div>
             </div>
           ))}

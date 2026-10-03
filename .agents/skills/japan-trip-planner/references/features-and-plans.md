@@ -23,6 +23,7 @@ When the user switches a plan to become the new Main plan:
 - **Day Card on Overview ([src/components/DayCard.tsx](../../../../src/components/DayCard.tsx))**: Shows the active day itinerary. Stop count badge (`activeActivities.length`), IC card cost, and cash/card cost strictly reflect the active Main Plan (`isMain: true`), never combining substitute plan counts.
 - **Trip Overview Page ([src/app/trips/page.tsx](../../../../src/app/trips/page.tsx))**: Pre-filters days to main plans when computing total activities and trip cost.
 - **Export View ([src/components/ExportItineraryView.tsx](../../../../src/components/ExportItineraryView.tsx))**: Strictly filters out substitute plans and displays ONLY activities from `isMain: true` plans.
+- **Streamlined Header & Tabs Bar ([src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx))**: The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner has been eliminated. The "Edit Plan Name" button is integrated directly into the plan tabs toolbar alongside `{substituteCount} / 3`, significantly trimming vertical header thickness and removing dead space.
 
 ---
 
@@ -124,7 +125,9 @@ Located at [src/components/TripStats.tsx](../../../../src/components/TripStats.t
   - Mobile (<640px): Grand Total card on top, sub-categories in a 2x2 grid underneath.
   - Tablet (640px - 1023px): Grand Total card on top full-width, sub-categories in a 4-card row underneath.
   - Desktop (>=1024px): Grand Total in Col 1 on the left, sub-categories in a 4-card row in Col 2 on the right.
-- **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact same Col 1 + Col 2 grid structure during page transitions.
+- **Proportional Spend Progress Bars**:
+  - Each of the 4 sub-category cards contains a percentage pill (`%` of `totalTripEstimatedThb`) and a rounded horizontal gradient progress bar (`h-1.5`) identical to the visual design in `DayTimeline.tsx`.
+- **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact same Col 1 + Col 2 grid structure including matching progress bar shimmer placeholders during page transitions.
 
 ---
 
@@ -158,6 +161,55 @@ Located at [src/components/BatchActivityModal.tsx](../../../../src/components/Ba
   - **Top of Day Action**: `+ แทรกจุดแวะแรกของวัน` / `+ Insert stop at beginning of day` button to prepend a morning stop before Stop #1.
   - **Timeline View Action**: In-between insert divider buttons on [DayTimeline.tsx](../../../../src/components/DayTimeline.tsx) open the batch editor with `initialInsertIndex` pre-selected.
 
+---
 
+## 9. Unified "Manage Stops" Button & Modal UX Architecture
 
+Located at [src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx) and [src/components/BatchActivityModal.tsx](../../../../src/components/BatchActivityModal.tsx):
+- **Purpose**: Consolidates separate "Edit Stops" and "Add Stop / Activity" buttons into a single smart entry point with an upgraded, compact editing workflow.
+- **Header Button State**:
+  - When activities exist: displays `✏️ Manage Stops · {count}` (`✏️ จัดการจุดแวะ · {count}`) with an embedded stop count badge, opening the modal in `edit` mode.
+  - When no activities exist: displays `+ Add Stop / Activity` (`+ เพิ่มสถานที่ / กิจกรรม`) with an animated pulsing ping indicator.
+- **Sleek Compact Header**:
+  - Compact single-line banner (`from-bg-surface via-bg-surface/95 to-accent/15`) with title, Day badge, Stops count pill (`📍 {count} stops`), and Time range pill (`🕒 {timeRange}`).
+  - Subtitle and duplicate header total cost removed for an ultra-clean, minimal header profile.
+- **Unified Add Stop Component Standard ("Add Another Stop" Principle)**:
+  - Both top (`+ Add first stop to start the day` / `+ แทรกจุดแวะแรกของวัน`) and bottom (`+ Add Another Stop` / `+ เพิ่มสถานที่ถัดไป`) buttons share the exact same full-width card-aligned component styling (`pl-11 sm:pl-14`, rounded-2xl dashed border `border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent font-bold`, `Plus` icon), creating clean visual symmetry at both ends of the schedule across both [BatchActivityModal.tsx](../../../../src/components/BatchActivityModal.tsx) and [DayTimeline.tsx](../../../../src/components/DayTimeline.tsx).
+- **Vertical Timeline Track & Symmetrical 3-Row Stop Cards**:
+  - **Left Timeline Track**: Vertical dashed connecting lines with solid accent circle badges (`1`, `2`, `3`...) and scheduled times (`06:30`, `08:09`) directly underneath each node.
+  - **Right Stop Card**:
+    - Row 1: `Location / Place name *` (with fuzzy dropdown suggestions), `Activity / Details *`, and Time pill (`Clock` icon + `HH:MM` inputs) + Delete button (`Trash2`).
+    - Row 2: `Cost` (currency dropdown, amount, IC card checkbox) & `Rail Pass Used` (dropdown + custom input).
+    - Row 3: `Remarks / Links (URL)` full-width input.
+  - All fields are always visible without nested collapsibles or image columns.
+- **In-between Dividers**:
+  - Horizontal dashed divider between adjacent stop cards with centered `+ Add stop between #X and #Y` button.
+- **Docked Footer**:
+  - Left: `Clear All Stops` (`ล้างจุดแวะทั้งหมด`) with a dedicated in-app confirmation modal (no default browser `window.confirm` popups).
+  - Center: Total estimated cost in JPY & THB.
+  - Right: `Cancel` and `Save All Changes` buttons.
+- **Required Field Validation & In-App Error Handling**:
+  - Submitting with missing required fields (`Location` or `Activity`) blocks saving without disruptive browser alerts; it immediately highlights invalid inputs with red borders (`* Required`) and automatically focuses and scrolls the viewport to the first missing field. Empty stop rows are never silently discarded.
+  - Zero native browser `alert()` or `confirm()` dialogs: clearing all stops triggers a polished in-app confirmation modal with Day title context, and batch save errors render an inline dismissible banner.
+- **Chronological Time Auto-sorting on Save**:
+  - Stops are automatically sorted in chronological order by scheduled time upon saving (e.g. Stop at 18:00 automatically moves before Stop at 18:30) with stable tie-breaking for identical times, ensuring daily timelines always stay properly sequenced across overview, export, and day timeline views.
+
+---
+
+## 10. Revamped Day Cost Stats Banner & Financial Breakdown
+
+Located at [src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx):
+- **Purpose**: Displays the active day/plan's financial expenditure overview in a unified, modern horizontal landscape card matching the app's aesthetic.
+- **Card Styling**:
+  - Warm beige background container: `bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs`.
+  - Responsive flex arrangement: stacks cleanly on mobile (`flex-col`) and unfolds into horizontal alignment on desktop (`lg:flex-row lg:items-center justify-between`).
+- **Left KPI Summary**:
+  - Double-ring circular coin container: `w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FCE8D3] ring-8 ring-[#FCE8D3]/50` housing a prominent Lucide `Coins` SVG.
+  - Plan-specific title label: `Total Day Cost`.
+  - Prominent bold font-mono JPY display (`text-2xl sm:text-3xl font-black font-mono text-text-primary`) with localized THB approximation underneath, with generous space and no squishing toggle buttons.
+- **Right Sub-category Cards (Stacked 2 Rows in Same Column)**:
+  - Both cards are stacked vertically as two rows within a single column on the right (`flex flex-col gap-2.5 w-full md:w-auto md:min-w-[300px] lg:min-w-[340px]`):
+  - **Row 1 (IC Card Spent)**: Styled in green emerald palette with `CreditCard` icon in `bg-emerald-500/10 text-emerald-600`, bold JPY, THB equivalent, percentage badge (`50%`), and a smooth gradient progress bar fill.
+  - **Row 2 (Cash & Credit Card)**: Styled in warm orange palette with `Wallet` icon in `bg-orange-500/10 text-orange-600`, bold JPY, THB equivalent, percentage badge (`50%`), and a smooth gradient progress bar fill.
+  - Built strictly using pure CSS/Tailwind and SVG vector icons without external bitmap image assets, permanently visible.
 

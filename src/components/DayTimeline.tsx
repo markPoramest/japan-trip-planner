@@ -15,7 +15,8 @@ import BatchActivityModal from "./BatchActivityModal";
 import {
   Clock, MapPin, CreditCard, Train, ExternalLink,
   Plus, Edit2, Edit3, Trash2, Banknote, DollarSign, AlertCircle, AlertTriangle, Check, X, Loader2, Globe,
-  ArrowRightLeft, Sparkles, CloudRain, Building, Coffee, Zap, Star
+  ArrowRightLeft, Sparkles, CloudRain, Building, Coffee, Zap, Star,
+  Coins, Wallet
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -234,6 +235,8 @@ export default function DayTimeline({
     .filter((a) => a.isIcCard)
     .reduce((sum, a) => sum + (a.cost || 0), 0);
   const nonIcCost = totalCost - icCost;
+  const icPercent = totalCost > 0 ? Math.round((icCost / totalCost) * 100) : 0;
+  const nonIcPercent = totalCost > 0 ? Math.round((nonIcCost / totalCost) * 100) : 0;
 
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
   const formattedDate = new Date(date).toLocaleDateString(dateLocale, {
@@ -512,14 +515,14 @@ export default function DayTimeline({
   return (
     <div className="space-y-6">
       {/* Day Header & Live Stats */}
-      <div data-aos="fade-down" className="bg-bg-card border border-border rounded-3xl p-6 shadow-card space-y-6">
+      <div data-aos="fade-down" className="bg-bg-card border border-border rounded-3xl p-4 sm:p-5 shadow-card space-y-3.5 sm:space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-wider">
                 {t("day")} {dayNumber}
               </span>
-              <span className="text-sm text-text-muted">{formattedDate}</span>
+              <span className="text-xs sm:text-sm text-text-muted">{formattedDate}</span>
             </div>
 
             {/* Title / Inline Title Editor */}
@@ -551,8 +554,8 @@ export default function DayTimeline({
                 </button>
               </form>
             ) : (
-              <div className="flex items-center gap-3 group mt-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight truncate">
+              <div className="flex items-center gap-2.5 group">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-text-primary tracking-tight truncate">
                   {currentTitle}
                 </h1>
                 {isOwner && (
@@ -565,7 +568,7 @@ export default function DayTimeline({
                     className="p-1.5 rounded-lg text-text-faint hover:text-accent hover:bg-bg-surface transition-colors cursor-pointer"
                     title={t("editDayTitle")}
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -574,29 +577,33 @@ export default function DayTimeline({
 
           {isOwner ? (
             <div className="flex items-center gap-2 flex-wrap self-start md:self-auto flex-shrink-0">
-              {currentActivities.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBatchModalMode("edit");
-                    setBatchModalOpen(true);
-                  }}
-                  className="px-3.5 py-2.5 rounded-xl bg-bg-surface border border-border hover:border-accent hover:text-accent text-text-primary text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-105"
-                  title={t("batchEditStops")}
-                >
-                  <Edit3 className="w-4 h-4 text-accent" />
-                  <span>{t("batchEditStops")}</span>
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
-                  setBatchModalMode("create");
+                  setInsertAtIndex(null);
+                  setBatchModalMode(currentActivities.length > 0 ? "edit" : "create");
                   setBatchModalOpen(true);
                 }}
-                className="px-4 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-sm font-bold shadow-accent flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-light text-white text-xs sm:text-sm font-bold shadow-accent flex items-center gap-2 transition-all hover:scale-102 cursor-pointer"
               >
-                <Plus className="w-4 h-4" /> {t("addStopActivity")}
+                {currentActivities.length > 0 ? (
+                  <>
+                    <Edit3 className="w-4 h-4" />
+                    <span>{t("manageStops")}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-xs font-extrabold tracking-wide">
+                      {currentActivities.length}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                    </span>
+                    <Plus className="w-4 h-4" />
+                    <span>{t("addStopActivity")}</span>
+                  </>
+                )}
               </button>
             </div>
           ) : (
@@ -610,81 +617,105 @@ export default function DayTimeline({
         {/* ─────────────────────────────────────────────────────────────
             PLAN SWITCHER TABS & SUBSTITUTE PLANS
         ───────────────────────────────────────────────────────────── */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-end text-xs">
-            <span className="text-[11px] text-text-faint">
-              {substituteCount} / 3 {t(substituteCount === 1 ? "substitutePlan" : "substitutePlans")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 sm:pb-0 scrollbar-none">
-            {localPlans.map((plan) => {
-              const isSelected = plan.id === activePlan.id;
-              return (
-                <button
-                  key={plan.id}
-                  type="button"
-                  onClick={() => setSelectedPlanId(plan.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${isSelected
-                    ? plan.isMain
-                      ? "bg-accent text-white shadow-accent"
-                      : "bg-sky-600 text-white shadow-md shadow-sky-600/30"
-                    : "bg-bg-surface text-text-muted hover:text-text-primary hover:bg-bg-surface/80 border border-border"
-                    }`}
-                >
-                  <span>{getPlanIcon(plan.tag, plan.isMain)}</span>
-                  <span>{plan.title}</span>
-                  {plan.isMain && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/20 text-white font-extrabold tracking-wider">
-                      MAIN
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-1 min-w-0">
+              {localPlans.map((plan) => {
+                const isSelected = plan.id === activePlan.id;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${isSelected
+                      ? plan.isMain
+                        ? "bg-accent text-white shadow-accent"
+                        : "bg-sky-600 text-white shadow-md shadow-sky-600/30"
+                      : "bg-bg-surface text-text-muted hover:text-text-primary hover:bg-bg-surface/80 border border-border"
+                      }`}
+                  >
+                    <span>{getPlanIcon(plan.tag, plan.isMain)}</span>
+                    <span>{plan.title}</span>
+                    {plan.isMain && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/20 text-white font-extrabold tracking-wider">
+                        MAIN
+                      </span>
+                    )}
+                    <span className="text-[10px] opacity-75">
+                      ({plan.activities.length})
                     </span>
-                  )}
-                  <span className="text-[10px] opacity-75">
-                    ({plan.activities.length})
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
 
-            {isOwner && substituteCount < 3 && (
-              <button
-                type="button"
-                onClick={handleOpenCreatePlanModal}
-                className="px-3 py-2 rounded-xl text-xs font-semibold text-accent hover:text-accent-hover bg-accent/10 hover:bg-accent/15 border border-accent/30 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-                title={t("addSubstitutePlan")}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t("addSubstitutePlan")}</span>
-              </button>
-            )}
+              {isOwner && substituteCount < 3 && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreatePlanModal}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-accent hover:text-accent-hover bg-accent/10 hover:bg-accent/15 border border-accent/30 transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                  title={t("addSubstitutePlan")}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t("addSubstitutePlan")}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Right side toolbar: Edit Plan Name & Plan Count */}
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0 pt-0.5 sm:pt-0">
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingPlanData({
+                      id: activePlan.id,
+                      title: activePlan.title,
+                      tag: activePlan.tag || (activePlan.isMain ? "main" : "backup"),
+                      notes: activePlan.notes || "",
+                    });
+                    setEditPlanModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-border/80 hover:border-accent text-text-muted hover:text-accent transition-colors cursor-pointer text-xs flex items-center gap-1 bg-bg-surface/60"
+                  title={t("editPlanName")}
+                >
+                  <Edit2 className="w-3 h-3" />
+                  <span className="text-[11px] font-medium">{t("editPlanName")}</span>
+                </button>
+              )}
+              <span className="text-[11px] text-text-faint whitespace-nowrap">
+                {substituteCount} / 3 {t(substituteCount === 1 ? "substitutePlan" : "substitutePlans")}
+              </span>
+            </div>
           </div>
 
-          {/* Active Plan Status Banner */}
-          {!activePlan.isMain ? (
-            <div className="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
-              <div className="space-y-1">
+          {/* Active Plan Status Banner (Only for Substitute Plans) */}
+          {!activePlan.isMain && (
+            <div className="mt-2.5 bg-sky-500/10 border border-sky-500/30 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs animate-in fade-in duration-200">
+              <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 font-bold text-[11px] border border-sky-500/30">
+                  <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 font-bold text-[10px] border border-sky-500/30">
                     {t("substitutePlan")}
                   </span>
-                  <span className="font-bold text-text-primary text-sm">
+                  <span className="font-bold text-text-primary text-xs truncate">
                     {activePlan.title}
                   </span>
                 </div>
-                <p className="text-text-muted text-[11px]">
-                  {activePlan.notes || t("substitutePlanDesc")}
-                </p>
+                {activePlan.notes && (
+                  <p className="text-text-muted text-[11px] truncate">
+                    {activePlan.notes}
+                  </p>
+                )}
               </div>
 
               {isOwner && (
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => handleOpenSwapModal(activePlan)}
                     disabled={isSwapping}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-accent to-amber-600 hover:from-accent-hover hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-accent/25 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent to-amber-600 hover:from-accent-hover hover:to-amber-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <ArrowRightLeft className="w-3 h-3" />
                     <span>{isSwapping ? "..." : t("swapToMain")}</span>
                   </button>
 
@@ -699,110 +730,123 @@ export default function DayTimeline({
                       });
                       setEditPlanModalOpen(true);
                     }}
-                    className="p-2 rounded-xl border border-border hover:border-accent text-text-muted hover:text-accent transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg border border-border hover:border-accent text-text-muted hover:text-accent transition-colors cursor-pointer"
                     title={t("editPlan")}
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
+                    <Edit2 className="w-3 h-3" />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleOpenDeletePlanModal(activePlan)}
                     disabled={isDeletingPlan}
-                    className="p-2 rounded-xl border border-border hover:border-red-500/50 hover:bg-red-500/10 text-text-muted hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-border hover:border-red-500/50 hover:bg-red-500/10 text-text-muted hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
                     title={t("deletePlan")}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2 flex items-center justify-between text-xs text-emerald-400">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="font-bold">{t("activeMainPlan")}</span>
-              </div>
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingPlanData({
-                      id: activePlan.id,
-                      title: activePlan.title,
-                      tag: activePlan.tag || "main",
-                      notes: activePlan.notes || "",
-                    });
-                    setEditPlanModalOpen(true);
-                  }}
-                  className="text-text-muted hover:text-text-primary text-[11px] flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit2 className="w-3 h-3" /> {t("editPlanName")}
-                </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Live Cost Stats */}
-        <div className="space-y-2 pt-4 border-t border-border">
-          {/* Primary: Total Day Cost */}
-          <div
-            className="bg-bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs text-text-muted">{t("totalDayCost")} ({activePlan.title})</div>
-              <div className="text-lg font-bold font-mono text-text-primary mt-0.5">
-                {formatJPY(totalCost)}
+        {/* Live Cost Stats Banner */}
+        <div className="pt-3 border-t border-border">
+          <div className="bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+            {/* Left: Total Day Cost */}
+            <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
+              {/* Coins Circular Badge */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FCE8D3] dark:bg-sand/15 ring-8 ring-[#FCE8D3]/50 dark:ring-sand/10 flex items-center justify-center flex-shrink-0">
+                <Coins className="w-7 h-7 sm:w-8 sm:h-8 text-orange-500 dark:text-sand" />
               </div>
-              <div className="text-[10px] text-text-muted font-mono">≈ {formatTHB(totalCost * exchangeRate)}</div>
-            </div>
-            <div className="p-2.5 rounded-lg bg-bg-card border border-border">
-              <DollarSign className="w-5 h-5 text-sand" />
-            </div>
-          </div>
 
-          {/* Subset: IC Card + Cash/Credit breakdown */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* IC Card */}
-            <div
-              className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sage/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
-            >
-              <div className="min-w-0">
-                <div className="text-[10px] text-text-faint font-medium truncate">{t("icCardSpent")}</div>
-                <div className="text-sm font-bold font-mono text-sage mt-0.5">
-                  {formatJPY(icCost)}
+              {/* Cost Info */}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs sm:text-sm font-medium text-text-muted truncate">
+                  {t("totalDayCost")}
                 </div>
-                <div className="text-[9px] text-text-faint font-mono">≈ {formatTHB(icCost * exchangeRate)}</div>
-              </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <div className="p-1.5 rounded-md bg-bg-surface border border-border">
-                  <CreditCard className="w-3.5 h-3.5 text-sage" />
+                <div className="text-2xl sm:text-3xl font-black font-mono text-text-primary mt-0.5 tracking-tight">
+                  {formatJPY(totalCost)}
                 </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold text-sage bg-sage-subtle border border-sage-muted">
-                  {totalCost > 0 ? Math.round((icCost / totalCost) * 100) : 0}%
-                </span>
+                <div className="text-xs text-text-muted font-mono mt-0.5">
+                  ≈ {formatTHB(totalCost * exchangeRate)}
+                </div>
               </div>
             </div>
 
-            {/* Cash & Credit Card */}
-            <div
-              className="bg-bg-card/60 border border-border/60 border-l-2 border-l-sand/40 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2"
-            >
-              <div className="min-w-0">
-                <div className="text-[10px] text-text-faint font-medium truncate">{t("cashAndCreditCard")}</div>
-                <div className="text-sm font-bold font-mono text-sand mt-0.5">
-                  {formatJPY(nonIcCost)}
+            {/* Right Column: Two rows (IC Card Spent & Cash/Credit Card) in same column */}
+            <div className="flex flex-col gap-2.5 w-full md:w-auto md:min-w-[300px] lg:min-w-[340px] flex-shrink-0">
+              {/* Row 1: IC Card Spent */}
+              <div className="bg-white/90 dark:bg-bg-card border border-border/70 rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold text-text-secondary truncate">
+                        {t("icCardSpent")}
+                      </div>
+                      <div className="text-[10px] text-text-muted font-mono">
+                        ≈ {formatTHB(icCost * exchangeRate)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {icPercent}%
+                    </span>
+                    <span className="text-sm sm:text-base font-bold font-mono text-text-primary">
+                      {formatJPY(icCost)}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-[9px] text-text-faint font-mono">≈ {formatTHB(nonIcCost * exchangeRate)}</div>
+
+                {/* Progress Bar */}
+                <div className="h-1.5 rounded-full bg-border/40 dark:bg-bg-surface overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, icPercent))}%` }}
+                  />
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <div className="p-1.5 rounded-md bg-bg-surface border border-border">
-                  <Banknote className="w-3.5 h-3.5 text-sand" />
+
+              {/* Row 2: Cash & Credit Card */}
+              <div className="bg-white/90 dark:bg-bg-card border border-border/70 rounded-2xl px-3.5 py-2.5 shadow-2xs space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold text-text-secondary truncate">
+                        {t("cashAndCreditCard")}
+                      </div>
+                      <div className="text-[10px] text-text-muted font-mono">
+                        ≈ {formatTHB(nonIcCost * exchangeRate)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                      {nonIcPercent}%
+                    </span>
+                    <span className="text-sm sm:text-base font-bold font-mono text-text-primary">
+                      {formatJPY(nonIcCost)}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold text-sand bg-sand-subtle border border-sand-muted">
-                  {totalCost > 0 ? Math.round((nonIcCost / totalCost) * 100) : 0}%
-                </span>
+
+                {/* Progress Bar */}
+                <div className="h-1.5 rounded-full bg-border/40 dark:bg-bg-surface overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, nonIcPercent))}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -829,6 +873,7 @@ export default function DayTimeline({
                 <button
                   type="button"
                   onClick={() => {
+                    setInsertAtIndex(null);
                     setBatchModalMode("create");
                     setBatchModalOpen(true);
                   }}
@@ -842,7 +887,7 @@ export default function DayTimeline({
         ) : (
           <>
             {isOwner && currentActivities.length > 0 && (
-              <div className="flex justify-end -mb-1">
+              <div className="pl-11 sm:pl-14 pb-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -850,111 +895,143 @@ export default function DayTimeline({
                     setBatchModalMode("edit");
                     setBatchModalOpen(true);
                   }}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-muted hover:text-accent hover:bg-accent/10 border border-border/50 hover:border-accent/30 transition-all flex items-center gap-1 cursor-pointer bg-bg-card shadow-xs"
+                  className="w-full py-3 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent shadow-2xs"
                   title={t("insertStopBeforeFirst")}
                 >
-                  <Plus className="w-3 h-3 text-accent" />
+                  <Plus className="w-4 h-4" />
                   <span>{t("insertStopBeforeFirst")}</span>
                 </button>
               </div>
             )}
 
-            {currentActivities.map((activity, idx) => {
-              const linkMatch = activity.remark ? activity.remark.match(/https?:\/\/[^\s]+/) : null;
-              const linkUrl = linkMatch ? linkMatch[0] : null;
+            <div className="relative">
+              {/* Continuous vertical dashed line down the entire timeline */}
+              <div className="absolute left-[21px] sm:left-[27px] top-6 bottom-6 w-0 border-l-2 border-dashed border-border/80 pointer-events-none z-0" />
 
-              return (
-                <div key={activity.id} className="space-y-4">
-                  <div className="bg-bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-accent/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-card group">
-                    {/* Time & Activity Details */}
-                    <div className="flex items-start gap-3 sm:gap-4 flex-1">
-                      <div className="flex flex-col items-center flex-shrink-0">
-                        <span className="px-2.5 py-1 rounded-lg bg-bg-surface border border-border text-xs font-mono font-bold text-accent">
+              {currentActivities.map((activity, idx) => {
+                const linkMatch = activity.remark ? activity.remark.match(/https?:\/\/[^\s]+/) : null;
+                const linkUrl = linkMatch ? linkMatch[0] : null;
+
+                return (
+                  <div key={activity.id} className="relative">
+                    {/* Stop Row with Left Timeline Track & Right Card */}
+                    <div className="flex items-start gap-3 sm:gap-4 relative">
+                      {/* Timeline Track (Left Column) */}
+                      <div className="flex flex-col items-center flex-shrink-0 w-11 sm:w-14 pt-3.5 relative select-none">
+                        {/* Number Badge */}
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-accent text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md relative z-10 ring-4 ring-bg-base">
+                          {idx + 1}
+                        </div>
+
+                        {/* Scheduled Time under Circle */}
+                        <span className="text-[11px] sm:text-xs font-mono font-bold text-text-secondary mt-1.5 tracking-tight text-center relative z-10 bg-bg-base px-1 rounded">
                           {activity.time}
                         </span>
                       </div>
 
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-text-primary text-sm sm:text-base">
-                            {activity.location}
-                          </span>
-                          {activity.usingPass && (
-                            <span className="px-2 py-0.5 rounded-full bg-olive-subtle border border-olive-muted text-olive text-[11px] font-medium flex items-center gap-1">
-                              <Train className="w-3 h-3" /> {activity.usingPass}
+                      {/* Activity Card (Right Column) */}
+                      <div className="flex-1 min-w-0 bg-bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-accent/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-card group relative">
+                        {/* Activity Details */}
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-text-primary text-sm sm:text-base">
+                              {activity.location}
                             </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-text-secondary leading-relaxed">
-                          {activity.activity}
-                        </p>
-                        {activity.remark && (
-                          <div className="text-[11px] text-text-muted flex items-center gap-1 pt-0.5">
-                            {linkUrl ? (
-                              <a
-                                href={linkUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-accent hover:underline flex items-center gap-1"
-                              >
-                                <ExternalLink className="w-3 h-3" /> {activity.remark}
-                              </a>
-                            ) : (
-                              <span>{activity.remark}</span>
+                            {activity.usingPass && (
+                              <span className="px-2 py-0.5 rounded-full bg-olive-subtle border border-olive-muted text-olive text-[11px] font-medium flex items-center gap-1">
+                                <Train className="w-3 h-3" /> {activity.usingPass}
+                              </span>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cost & Action Controls */}
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 font-bold text-sm font-mono text-text-primary">
-                          {activity.isIcCard && (
-                            <span title="Paid with IC Card">
-                              <CreditCard className="w-3.5 h-3.5 text-sage" />
-                            </span>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {activity.activity}
+                          </p>
+                          {activity.remark && (
+                            <div className="text-[11px] text-text-muted flex items-center gap-1 pt-0.5">
+                              {linkUrl ? (
+                                <a
+                                  href={linkUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent hover:underline flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" /> {activity.remark}
+                                </a>
+                              ) : (
+                                <span>{activity.remark}</span>
+                              )}
+                            </div>
                           )}
-                          <span>{formatJPY(activity.cost || 0)}</span>
                         </div>
-                        <div className="text-[10px] text-text-muted font-mono">
-                          ≈ {formatTHB((activity.cost || 0) * exchangeRate)}
+
+                        {/* Cost & Action Controls */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 font-bold text-sm font-mono text-text-primary">
+                              {activity.isIcCard && (
+                                <span title="Paid with IC Card">
+                                  <CreditCard className="w-3.5 h-3.5 text-sage" />
+                                </span>
+                              )}
+                              <span>{formatJPY(activity.cost || 0)}</span>
+                            </div>
+                            <div className="text-[10px] text-text-muted font-mono">
+                              ≈ {formatTHB((activity.cost || 0) * exchangeRate)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* In-between Insert Divider Button */}
-                  {isOwner && idx < currentActivities.length - 1 && (
-                    <div className="relative flex items-center justify-center my-1 group/insert">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInsertAtIndex(idx + 1);
-                          setBatchModalMode("edit");
-                          setBatchModalOpen(true);
-                        }}
-                        className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-card hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs group-hover/insert:scale-105 cursor-pointer opacity-80 group-hover/insert:opacity-100"
-                        title={t("insertStopBetween")
-                          .replace("{prev}", String(idx + 1))
-                          .replace("{next}", String(idx + 2))}
-                      >
-                        <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
-                        <span>
-                          {t("insertStopBetween")
+                    {/* In-between Insert Divider Button */}
+                    {isOwner && idx < currentActivities.length - 1 && (
+                      <div className="relative flex items-center justify-center my-3 group/insert pl-11 sm:pl-14 z-10">
+                        <div className="absolute inset-0 flex items-center pl-11 sm:pl-14">
+                          <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInsertAtIndex(idx + 1);
+                            setBatchModalMode("edit");
+                            setBatchModalOpen(true);
+                          }}
+                          className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-card hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs group-hover/insert:scale-105 cursor-pointer opacity-80 group-hover/insert:opacity-100"
+                          title={t("insertStopBetween")
                             .replace("{prev}", String(idx + 1))
                             .replace("{next}", String(idx + 2))}
-                        </span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                        >
+                          <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
+                          <span>
+                            {t("insertStopBetween")
+                              .replace("{prev}", String(idx + 1))
+                              .replace("{next}", String(idx + 2))}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Another Stop Button at Bottom */}
+            {isOwner && currentActivities.length > 0 && (
+              <div className="pl-11 sm:pl-14 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInsertAtIndex(currentActivities.length);
+                    setBatchModalMode("edit");
+                    setBatchModalOpen(true);
+                  }}
+                  className="w-full py-3 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent shadow-2xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t("addAnotherStop")}</span>
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -7,7 +7,7 @@ import { createActivitiesBatch, saveActivitiesBatch } from "@/lib/actions";
 import {
   X, Clock, MapPin, AlignLeft, CreditCard, Train, Ticket,
   Link as LinkIcon, CircleDollarSign, ArrowRightLeft, Loader2, Sparkles,
-  ChevronDown, Plus, PlusCircle, Trash2, CheckCircle2, Edit3
+  ChevronDown, Plus, Trash2, CheckCircle2, Edit3
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -187,6 +187,9 @@ export default function BatchActivityModal({
   const [loading, setLoading] = useState(false);
   const [activeDropdownRowId, setActiveDropdownRowId] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [hasSubmittedAttempt, setHasSubmittedAttempt] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const suggestionsListRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -230,6 +233,9 @@ export default function BatchActivityModal({
       setDeletedActivityIds([]);
       setActiveDropdownRowId(null);
       setHighlightedIndex(-1);
+      setHasSubmittedAttempt(false);
+      setShowClearConfirmModal(false);
+      setSaveError(null);
 
       if (defaultMode === "edit" && existingActivities.length > 0) {
         const baseRows = buildRowsFromExisting();
@@ -273,6 +279,7 @@ export default function BatchActivityModal({
     setDeletedActivityIds([]);
     setActiveDropdownRowId(null);
     setHighlightedIndex(-1);
+    setHasSubmittedAttempt(false);
 
     if (newMode === "edit") {
       setRows(buildRowsFromExisting());
@@ -288,7 +295,6 @@ export default function BatchActivityModal({
       const target = e.target as HTMLElement | null;
       if (!target) return;
 
-      // If clicked inside the currently open dropdown wrapper, don't dismiss
       const wrapper = target.closest(
         `[data-location-dropdown-wrapper="${activeDropdownRowId}"]`
       );
@@ -337,7 +343,7 @@ export default function BatchActivityModal({
 
   const activeRowIndex = rows.findIndex((r) => r.id === activeDropdownRowId);
 
-  // Dynamic available locations for the active row, including above places in this batch & previous stops
+  // Dynamic available locations for active row
   const activeLocationsList = useMemo(() => {
     if (activeRowIndex < 0) return [];
 
@@ -351,7 +357,7 @@ export default function BatchActivityModal({
       }
     >();
 
-    // 1. Immediately above stop in this batch (rows[activeRowIndex - 1])
+    // 1. Immediately above stop in this batch
     if (activeRowIndex > 0) {
       const prevStop = rows[activeRowIndex - 1];
       const prevLoc = prevStop?.location?.trim();
@@ -364,7 +370,7 @@ export default function BatchActivityModal({
         });
       }
 
-      // Other stops above in this batch (rows[0 ... activeRowIndex - 2])
+      // Other stops above in this batch
       for (let i = activeRowIndex - 2; i >= 0; i--) {
         const loc = rows[i]?.location?.trim();
         if (loc && loc.toLowerCase() !== "location") {
@@ -398,7 +404,7 @@ export default function BatchActivityModal({
       }
     }
 
-    // 3. Previous day's last location (if first row of this day and no existing activities)
+    // 3. Previous day's last location
     if (
       activeRowIndex === 0 &&
       (!existingActivities || existingActivities.length === 0) &&
@@ -445,6 +451,7 @@ export default function BatchActivityModal({
   const filteredLocations = useMemo(() => {
     if (!activeRow || !activeLocationsList.length) return [];
     const query = activeRow.location.trim();
+
     if (!query) {
       return activeLocationsList
         .map((item) => ({
@@ -522,6 +529,22 @@ export default function BatchActivityModal({
     }
   };
 
+  const handleClearAllStops = () => {
+    if (rows.length === 0) return;
+    setShowClearConfirmModal(true);
+  };
+
+  const handleConfirmClearAll = () => {
+    const existingIds = rows
+      .map((r) => r.activityId)
+      .filter((id): id is string => Boolean(id));
+    setDeletedActivityIds((prev) => Array.from(new Set([...prev, ...existingIds])));
+    setRows([]);
+    setHasSubmittedAttempt(false);
+    setActiveDropdownRowId(null);
+    setShowClearConfirmModal(false);
+  };
+
   const handleSelectLocation = (rowId: string, locName: string) => {
     updateRow(rowId, { location: locName });
     setActiveDropdownRowId(null);
@@ -574,6 +597,29 @@ export default function BatchActivityModal({
 
   const totalThb = Math.round(totalJpy * exchangeRate);
 
+  // Calculate earliest and latest stop times for summary strip (plain calculation without hook)
+  const timeMinutes = rows
+    .map((r) => {
+      const h = parseInt(r.hour, 10);
+      const m = parseInt(r.minute, 10);
+      if (isNaN(h) || isNaN(m)) return null;
+      return {
+        total: h * 60 + m,
+        formatted: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+      };
+    })
+    .filter((t): t is { total: number; formatted: string } => t !== null);
+
+  const timeRange =
+    timeMinutes.length > 0
+      ? (() => {
+          const sorted = [...timeMinutes].sort((a, b) => a.total - b.total);
+          const earliest = sorted[0].formatted;
+          const latest = sorted[sorted.length - 1].formatted;
+          return earliest === latest ? earliest : `${earliest} → ${latest}`;
+        })()
+      : null;
+
   const handleHourChange = (rowId: string, val: string) => {
     const digits = val.replace(/\D/g, "").slice(0, 2);
     const num = parseInt(digits, 10);
@@ -609,18 +655,39 @@ export default function BatchActivityModal({
   // Submit all rows
   async function handleSubmitAll(e: React.FormEvent) {
     e.preventDefault();
-    const validRows = rows.filter(
-      (r) => r.location.trim() !== "" || r.activity.trim() !== ""
+    setSaveError(null);
+
+    if (rows.length === 0 && deletedActivityIds.length === 0) {
+      onClose();
+      return;
+    }
+
+    // Validate that every stop has required fields (Location and Activity)
+    const firstInvalidIdx = rows.findIndex(
+      (r) => !r.location.trim() || !r.activity.trim()
     );
 
-    if (validRows.length === 0 && deletedActivityIds.length === 0) {
-      alert(t("noStopsAdded"));
+    if (firstInvalidIdx !== -1) {
+      setHasSubmittedAttempt(true);
+      const invalidRow = rows[firstInvalidIdx];
+
+      const missingInputId = !invalidRow.location.trim()
+        ? `loc-input-${invalidRow.id}`
+        : `act-input-${invalidRow.id}`;
+
+      setTimeout(() => {
+        const el = document.getElementById(missingInputId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      }, 50);
       return;
     }
 
     setLoading(true);
     try {
-      const itemsToSave = validRows.map((r) => {
+      const itemsToSave = rows.map((r) => {
         const numVal = parseFloat(r.amount) || 0;
         const jpyVal =
           r.currency === "JPY"
@@ -648,18 +715,34 @@ export default function BatchActivityModal({
         };
       });
 
+      // Sort items chronologically by time (e.g. Card with 18:00 moves before Card with 18:30)
+      const parseTimeToMinutes = (t: string) => {
+        const [h, m] = t.split(":").map((v) => parseInt(v, 10));
+        if (isNaN(h)) return 24 * 60;
+        return h * 60 + (isNaN(m) ? 0 : m);
+      };
+
+      const sortedItemsToSave = [...itemsToSave]
+        .map((item, originalIndex) => ({ item, originalIndex }))
+        .sort((a, b) => {
+          const diff = parseTimeToMinutes(a.item.time) - parseTimeToMinutes(b.item.time);
+          if (diff !== 0) return diff;
+          return a.originalIndex - b.originalIndex;
+        })
+        .map((x) => x.item);
+
       if (
         mode === "edit" ||
         deletedActivityIds.length > 0 ||
-        itemsToSave.some((it) => it.id)
+        sortedItemsToSave.some((it) => it.id)
       ) {
         await saveActivitiesBatch(dayId, {
           planId,
-          items: itemsToSave,
+          items: sortedItemsToSave,
           deletedIds: deletedActivityIds,
         });
       } else {
-        await createActivitiesBatch(dayId, itemsToSave, planId);
+        await createActivitiesBatch(dayId, sortedItemsToSave, planId);
       }
 
       startTransition(() => {
@@ -671,7 +754,7 @@ export default function BatchActivityModal({
       onClose();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Failed to batch save activities");
+      setSaveError(err?.message || "Failed to batch save activities");
     } finally {
       setLoading(false);
     }
@@ -683,420 +766,487 @@ export default function BatchActivityModal({
     "text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1 flex items-center gap-1";
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md overflow-y-auto">
       <div
-        className="bg-bg-card border border-border rounded-3xl w-full max-w-3xl shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh] overflow-hidden relative"
+        className="bg-bg-card border border-border/80 dark:border-border rounded-3xl w-full max-w-4xl lg:max-w-5xl shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh] overflow-hidden relative"
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-bg-surface/50">
-          <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-text-primary flex items-center gap-2 flex-wrap">
-              {mode === "edit" ? (
-                <Edit3 className="w-5 h-5 text-accent" />
-              ) : (
-                <Plus className="w-5 h-5 text-accent" />
-              )}
-              <span>
-                {mode === "edit" ? t("batchEditModalTitle") : t("addStopActivity")}
-              </span>
+        {/* Sleek Compact Header */}
+        <div className="relative px-5 sm:px-6 py-3.5 border-b border-border/80 bg-gradient-to-r from-bg-surface via-bg-surface/95 to-accent/15 dark:to-accent/20 flex-shrink-0 z-20 overflow-hidden">
+          {/* Subtle decorative background glow */}
+          <div className="absolute right-0 top-0 w-72 h-full bg-gradient-to-l from-accent/10 to-transparent pointer-events-none" />
+
+          <div className="relative z-10 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-accent/15 text-accent flex items-center justify-center flex-shrink-0 shadow-2xs">
+                <Edit3 className="w-3.5 h-3.5" />
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-text-primary tracking-tight">
+                {mode === "edit" ? t("manageStops") : t("addStopActivity")}
+              </h2>
               {dayNumber !== undefined && (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-bold">
                   {t("day")} {dayNumber} {dayTitle ? `· ${dayTitle}` : ""}
                 </span>
               )}
-            </h3>
+              {rows.length > 0 && (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-bg-surface/90 border border-border/80 text-text-muted font-bold flex items-center gap-1 shadow-2xs">
+                  <MapPin className="w-3 h-3 text-accent" />
+                  <span>
+                    {rows.length} {t("stops")}
+                  </span>
+                </span>
+              )}
+              {timeRange && (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-bg-surface/90 border border-border/80 text-text-secondary font-mono font-bold flex items-center gap-1 shadow-2xs">
+                  <Clock className="w-3 h-3 text-accent" />
+                  <span>{timeRange}</span>
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              disabled={loading}
+              type="button"
+              className="p-1.5 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-surface/80 border border-border/40 transition-colors cursor-pointer disabled:opacity-50 flex-shrink-0"
+              title={t("cancel")}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            disabled={loading}
-            type="button"
-            className="self-end sm:self-auto p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Scrollable Rows Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        {/* Scrollable Timeline & Stop Cards Container */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* Top Insert Button (Add first stop to start the day) */}
           {rows.length > 0 && (
-            <div className="flex justify-end -mb-1">
+            <div className="pl-11 sm:pl-14 pb-1">
               <button
                 type="button"
                 onClick={() => handleInsertRow(0)}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-text-muted hover:text-accent hover:bg-accent/10 border border-border/50 hover:border-accent/30 transition-all flex items-center gap-1 cursor-pointer bg-bg-surface/60 shadow-xs"
+                className="w-full py-3 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent shadow-2xs"
                 title={t("insertStopBeforeFirst")}
               >
-                <Plus className="w-3 h-3 text-accent" />
+                <Plus className="w-4 h-4" />
                 <span>{t("insertStopBeforeFirst")}</span>
               </button>
             </div>
           )}
 
           {rows.length === 0 ? (
-            <div className="py-12 text-center text-text-muted flex flex-col items-center justify-center space-y-3 bg-bg-surface/50 border border-dashed border-border rounded-2xl">
-              <p className="text-xs font-semibold text-text-secondary">{t("noStopsAdded")}</p>
+            <div className="py-16 text-center text-text-muted flex flex-col items-center justify-center space-y-3 bg-bg-surface/50 border border-dashed border-border rounded-3xl">
+              <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
+                <MapPin className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-text-secondary">
+                {t("noStopsAdded")}
+              </p>
               <button
                 type="button"
                 onClick={handleAddRow}
-                className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold hover:bg-accent-light transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-accent text-white text-xs font-bold hover:bg-accent-light transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t("addAnotherStop")}</span>
+                <Plus className="w-4 h-4" />
+                <span>{t("insertStopBeforeFirst")}</span>
               </button>
             </div>
           ) : (
-            rows.map((row, idx) => {
-              const isDropdownOpen = activeDropdownRowId === row.id;
+            <div className="relative">
+              {/* Continuous vertical dashed line down the entire timeline */}
+              <div className="absolute left-[21px] sm:left-[27px] top-6 bottom-6 w-0 border-l-2 border-dashed border-border/80 pointer-events-none z-0" />
 
-              return (
-                <div key={row.id} className="space-y-4">
-                  <div className="bg-bg-surface border border-border/80 rounded-2xl p-4 transition-all hover:border-accent/40 space-y-3 relative shadow-sm">
-                    {/* Row Header: Number + Quick Time + Delete */}
-                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-accent text-white text-xs font-bold font-mono">
-                          #{idx + 1}
-                        </span>
-                        <span className="text-xs font-bold text-text-secondary">
-                          {t("stopNumber")} {idx + 1}
+              {rows.map((row, idx) => {
+                const isDropdownOpen = activeDropdownRowId === row.id;
+
+                return (
+                  <div key={row.id} className="relative">
+                    {/* Stop Row with Left Timeline Track & Right Card */}
+                    <div className="flex items-start gap-3 sm:gap-4 relative">
+                      {/* Timeline Track (Left Column) */}
+                      <div className="flex flex-col items-center flex-shrink-0 w-11 sm:w-14 pt-3.5 relative select-none">
+                        {/* Number Badge */}
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-accent text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md relative z-10 ring-4 ring-bg-card">
+                          {idx + 1}
+                        </div>
+
+                        {/* Scheduled Time under Circle */}
+                        <span className="text-[11px] sm:text-xs font-mono font-bold text-text-secondary mt-1.5 tracking-tight text-center relative z-10 bg-bg-card px-1 rounded">
+                          {(row.hour || "09").padStart(2, "0")}:{(row.minute || "00").padStart(2, "0")}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {/* Direct Typed Hour : Minute Inputs */}
-                        <div className="flex items-center gap-1 bg-bg-base border border-border rounded-xl px-2.5 py-1 focus-within:border-accent">
-                          <Clock className="w-3.5 h-3.5 text-accent/70 mr-0.5" />
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={2}
-                            value={row.hour}
-                            onChange={(e) => handleHourChange(row.id, e.target.value)}
-                            onBlur={(e) => handleHourBlur(row.id, e.target.value)}
-                            placeholder="09"
-                            className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
-                          />
-                          <span className="font-bold text-text-muted font-mono text-xs">:</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={2}
-                            value={row.minute}
-                            onChange={(e) => handleMinuteChange(row.id, e.target.value)}
-                            onBlur={(e) => handleMinuteBlur(row.id, e.target.value)}
-                            placeholder="00"
-                            className="w-6 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
-                          />
+                      {/* Stop Card (Right Column) */}
+                      <div className="flex-1 min-w-0 bg-bg-surface border border-border/80 dark:border-border hover:border-accent/40 rounded-2xl p-4 sm:p-5 shadow-xs transition-all space-y-3.5 relative">
+                        {/* Row 1: Location & Activity & Time/Delete Controls */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                          {/* Location with Fuzzy Search Dropdown */}
+                          <div className="md:col-span-5">
+                            <label className={labelClass}>
+                              <MapPin className="w-3 h-3 text-accent" /> {t("locationPlace")} *
+                            </label>
+                            <div className="relative" data-location-dropdown-wrapper={row.id}>
+                              <input
+                                id={`loc-input-${row.id}`}
+                                type="text"
+                                value={row.location}
+                                onChange={(e) => {
+                                  updateRow(row.id, { location: e.target.value });
+                                  setActiveDropdownRowId(row.id);
+                                  setHighlightedIndex(-1);
+                                }}
+                                onFocus={() => {
+                                  if (activeLocationsList.length > 0) {
+                                    setActiveDropdownRowId(row.id);
+                                  }
+                                }}
+                                onKeyDown={(e) => handleLocationKeyDown(e, row.id)}
+                                placeholder="e.g. Rembrandt Inn Aomori"
+                                className={`${inputClass} pr-8 ${
+                                  hasSubmittedAttempt && !row.location.trim()
+                                    ? "border-red-500 bg-red-500/5 focus:border-red-500"
+                                    : ""
+                                }`}
+                                autoComplete="off"
+                              />
+                              {hasSubmittedAttempt && !row.location.trim() && (
+                                <p className="text-[10px] text-red-500 font-semibold mt-1">
+                                  * {t("fieldRequired")}
+                                </p>
+                              )}
+                              {activeLocationsList.length > 0 && (
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  onClick={() => {
+                                    setActiveDropdownRowId(
+                                      isDropdownOpen ? null : row.id
+                                    );
+                                  }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-text-muted hover:text-accent transition-colors"
+                                >
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform ${
+                                      isDropdownOpen ? "rotate-180 text-accent" : ""
+                                    }`}
+                                  />
+                                </button>
+                              )}
+
+                              {/* Fuzzy Suggestions Dropdown */}
+                              {isDropdownOpen && activeLocationsList.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
+                                  <div className="px-2.5 py-1.5 bg-bg-surface border-b border-border/70 flex items-center justify-between text-[10px] text-text-muted font-bold">
+                                    <span className="flex items-center gap-1">
+                                      <Sparkles className="w-2.5 h-2.5 text-accent" />
+                                      {t("tripLocationsTitle")} ({filteredLocations.length})
+                                    </span>
+                                    <span className="text-text-faint hidden sm:inline">
+                                      {t("fuzzySearchTip")}
+                                    </span>
+                                  </div>
+                                  <ul
+                                    ref={suggestionsListRef}
+                                    className="divide-y divide-border/40 py-1"
+                                    role="listbox"
+                                  >
+                                    {filteredLocations.length > 0 ? (
+                                      filteredLocations.map((locItem, lIdx) => {
+                                        const isHighlighted = lIdx === highlightedIndex;
+                                        const segments = getMatchedSegments(
+                                          locItem.name,
+                                          locItem.indices
+                                        );
+                                        return (
+                                          <li
+                                            key={`${locItem.name}-${lIdx}`}
+                                            role="option"
+                                            aria-selected={isHighlighted}
+                                            onMouseEnter={() => setHighlightedIndex(lIdx)}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() =>
+                                              handleSelectLocation(row.id, locItem.name)
+                                            }
+                                            className={`px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                                              isHighlighted
+                                                ? "bg-accent/15 text-text-primary"
+                                                : "hover:bg-bg-surface text-text-secondary hover:text-text-primary"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
+                                              <MapPin
+                                                className={`w-3 h-3 flex-shrink-0 ${
+                                                  isHighlighted ? "text-accent" : "text-text-faint"
+                                                }`}
+                                              />
+                                              <span className="truncate">
+                                                {segments.map((seg, sIdx) =>
+                                                  seg.match ? (
+                                                    <span
+                                                      key={sIdx}
+                                                      className="text-accent font-extrabold underline decoration-accent/60"
+                                                    >
+                                                      {seg.text}
+                                                    </span>
+                                                  ) : (
+                                                    <span key={sIdx}>{seg.text}</span>
+                                                  )
+                                                )}
+                                              </span>
+                                            </div>
+                                            {locItem.count && locItem.count > 1 ? (
+                                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20 flex-shrink-0">
+                                                {locItem.count}x
+                                              </span>
+                                            ) : null}
+                                          </li>
+                                        );
+                                      })
+                                    ) : (
+                                      <li className="px-2.5 py-2 text-[11px] text-text-muted text-center italic">
+                                        {t("noMatchingLocations")}
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Activity / Details */}
+                          <div className="md:col-span-4">
+                            <label className={labelClass}>
+                              <AlignLeft className="w-3 h-3 text-text-faint" /> {t("activityDetails")} *
+                            </label>
+                            <input
+                              id={`act-input-${row.id}`}
+                              type="text"
+                              value={row.activity}
+                              onChange={(e) => updateRow(row.id, { activity: e.target.value })}
+                              placeholder="e.g. Wake up / Walk street..."
+                              className={`${inputClass} ${
+                                hasSubmittedAttempt && !row.activity.trim()
+                                  ? "border-red-500 bg-red-500/5 focus:border-red-500"
+                                  : ""
+                              }`}
+                            />
+                            {hasSubmittedAttempt && !row.activity.trim() && (
+                              <p className="text-[10px] text-red-500 font-semibold mt-1">
+                                * {t("fieldRequired")}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Time Input Pill & Delete Button */}
+                          <div className="md:col-span-3 flex items-center justify-between md:justify-end gap-2 pt-0 md:pt-5">
+                            {/* Typed Hour : Minute Pill */}
+                            <div className="flex items-center gap-1 bg-bg-base border border-border rounded-xl px-2.5 py-1.5 focus-within:border-accent shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 text-accent/80 mr-0.5 flex-shrink-0" />
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={2}
+                                value={row.hour}
+                                onChange={(e) => handleHourChange(row.id, e.target.value)}
+                                onBlur={(e) => handleHourBlur(row.id, e.target.value)}
+                                placeholder="09"
+                                className="w-5 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
+                              />
+                              <span className="font-bold text-text-muted font-mono text-xs">:</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={2}
+                                value={row.minute}
+                                onChange={(e) => handleMinuteChange(row.id, e.target.value)}
+                                onBlur={(e) => handleMinuteBlur(row.id, e.target.value)}
+                                placeholder="00"
+                                className="w-5 text-center bg-transparent text-xs font-mono font-bold text-text-primary focus:outline-none"
+                              />
+                            </div>
+
+                            {/* Delete Stop Button */}
+                            <button
+                              type="button"
+                              disabled={mode === "create" && rows.length <= 1}
+                              onClick={() => handleRemoveRow(row.id)}
+                              className="p-2 rounded-xl text-text-muted hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors disabled:opacity-30 cursor-pointer"
+                              title={t("removeStop")}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Insert Stop After This Card Button */}
+                        {/* Row 2: Cost & Transit Pass */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-0.5">
+                          {/* Cost & IC Card */}
+                          <div>
+                            <label className={labelClass}>
+                              <CircleDollarSign className="w-3 h-3 text-accent" /> {t("cost")}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={row.currency}
+                                onChange={(e) =>
+                                  updateRow(row.id, { currency: e.target.value as "JPY" | "THB" })
+                                }
+                                className="px-2.5 py-2 bg-bg-base border border-border rounded-xl text-xs font-bold text-accent focus:outline-none focus:border-accent cursor-pointer flex-shrink-0"
+                              >
+                                <option value="JPY">¥ JPY</option>
+                                <option value="THB">฿ THB</option>
+                              </select>
+
+                              <input
+                                type="number"
+                                value={row.amount}
+                                onChange={(e) => updateRow(row.id, { amount: e.target.value })}
+                                placeholder="0"
+                                className="w-full px-3 py-2 bg-bg-base border border-border rounded-xl text-xs font-mono font-bold text-text-primary focus:outline-none focus:border-accent min-w-0"
+                              />
+
+                              <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none px-2.5 py-2 bg-bg-base border border-border rounded-xl flex-shrink-0 hover:border-accent/50 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={row.isIcCard}
+                                  onChange={(e) => updateRow(row.id, { isIcCard: e.target.checked })}
+                                  className="rounded border-border text-accent focus:ring-accent cursor-pointer"
+                                />
+                                <CreditCard className="w-3.5 h-3.5 text-accent" />
+                                <span className="font-semibold text-[11px]">IC</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Rail Pass Used */}
+                          <div>
+                            <label className={labelClass}>
+                              <Train className="w-3 h-3 text-accent" /> {t("railPassUsed")}
+                            </label>
+                            <select
+                              value={row.selectedPass}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateRow(row.id, {
+                                  selectedPass: val,
+                                  isCustomMode: val === "__custom__",
+                                });
+                              }}
+                              className={inputClass}
+                            >
+                              <option value="">{t("noPassUsed")}</option>
+                              {availablePasses.map((p) => (
+                                <option key={p} value={p}>
+                                  {p}
+                                </option>
+                              ))}
+                              <option value="__custom__">{t("otherCustomPass")}</option>
+                            </select>
+                            {row.isCustomMode && (
+                              <input
+                                type="text"
+                                value={row.customPass}
+                                onChange={(e) =>
+                                  updateRow(row.id, { customPass: e.target.value })
+                                }
+                                placeholder={t("enterCustomPass")}
+                                className={`${inputClass} mt-1.5`}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Row 3: Remarks & Links (Full Width) */}
+                        <div className="pt-0.5">
+                          <label className={labelClass}>
+                            <LinkIcon className="w-3 h-3 text-text-faint" /> {t("remarksLinks")}
+                          </label>
+                          <input
+                            type="text"
+                            value={row.remark}
+                            onChange={(e) =>
+                              updateRow(row.id, { remark: e.target.value })
+                            }
+                            placeholder="e.g. URL link or notes"
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* In-between Insert Divider Button */}
+                    {idx < rows.length - 1 && (
+                      <div className="relative flex items-center justify-center my-3 group/insert pl-11 sm:pl-14">
+                        <div className="absolute inset-0 flex items-center pl-11 sm:pl-14">
+                          <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleInsertRow(idx + 1)}
-                          className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent/10 transition-colors cursor-pointer"
-                          title={t("insertStopAfter")}
+                          className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-surface hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs group-hover/insert:scale-105 cursor-pointer"
+                          title={t("insertStopBetween")
+                            .replace("{prev}", String(idx + 1))
+                            .replace("{next}", String(idx + 2))}
                         >
-                          <PlusCircle className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Stop Button */}
-                        <button
-                          type="button"
-                          disabled={mode === "create" && rows.length <= 1}
-                          onClick={() => handleRemoveRow(row.id)}
-                          className="p-1.5 rounded-lg text-text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 cursor-pointer"
-                          title={t("removeStop")}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
+                          <span>
+                            {t("insertStopBetween")
+                              .replace("{prev}", String(idx + 1))
+                              .replace("{next}", String(idx + 2))}
+                          </span>
                         </button>
                       </div>
-                    </div>
-
-                    {/* Primary Inputs: Location & Activity */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Location with Fuzzy Search Dropdown */}
-                      <div>
-                        <label className={labelClass}>
-                          <MapPin className="w-3 h-3 text-accent" /> {t("locationPlace")} *
-                        </label>
-                        <div className="relative" data-location-dropdown-wrapper={row.id}>
-                          <input
-                            id={`loc-input-${row.id}`}
-                            type="text"
-                        value={row.location}
-                        onChange={(e) => {
-                          updateRow(row.id, { location: e.target.value });
-                          setActiveDropdownRowId(row.id);
-                          setHighlightedIndex(-1);
-                        }}
-                        onFocus={() => {
-                          if (activeLocationsList.length > 0) {
-                            setActiveDropdownRowId(row.id);
-                          }
-                        }}
-                        onKeyDown={(e) => handleLocationKeyDown(e, row.id)}
-                        placeholder="e.g. Asakusa Sensoji Temple"
-                        className={`${inputClass} pr-8`}
-                        autoComplete="off"
-                      />
-                      {activeLocationsList.length > 0 && (
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => {
-                            setActiveDropdownRowId(
-                              isDropdownOpen ? null : row.id
-                            );
-                          }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-text-muted hover:text-accent transition-colors"
-                        >
-                          <ChevronDown
-                            className={`w-3.5 h-3.5 transition-transform ${
-                              isDropdownOpen ? "rotate-180 text-accent" : ""
-                            }`}
-                          />
-                        </button>
-                      )}
-
-                      {/* Fuzzy Suggestions Dropdown */}
-                      {isDropdownOpen && activeLocationsList.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
-                          <div className="px-2.5 py-1.5 bg-bg-surface border-b border-border/70 flex items-center justify-between text-[10px] text-text-muted font-bold">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="w-2.5 h-2.5 text-accent" />
-                              {t("tripLocationsTitle")} ({filteredLocations.length})
-                            </span>
-                            <span className="text-text-faint hidden sm:inline">
-                              {t("fuzzySearchTip")}
-                            </span>
-                          </div>
-                          <ul
-                            ref={suggestionsListRef}
-                            className="divide-y divide-border/40 py-1"
-                            role="listbox"
-                          >
-                            {filteredLocations.length > 0 ? (
-                              filteredLocations.map((locItem, lIdx) => {
-                                const isHighlighted = lIdx === highlightedIndex;
-                                const segments = getMatchedSegments(
-                                  locItem.name,
-                                  locItem.indices
-                                );
-                                return (
-                                  <li
-                                    key={`${locItem.name}-${lIdx}`}
-                                    role="option"
-                                    aria-selected={isHighlighted}
-                                    onMouseEnter={() => setHighlightedIndex(lIdx)}
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() =>
-                                      handleSelectLocation(row.id, locItem.name)
-                                    }
-                                    className={`px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                                      isHighlighted
-                                        ? "bg-accent/15 text-text-primary"
-                                        : "hover:bg-bg-surface text-text-secondary hover:text-text-primary"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
-                                      <MapPin
-                                        className={`w-3 h-3 flex-shrink-0 ${
-                                          isHighlighted ? "text-accent" : "text-text-faint"
-                                        }`}
-                                      />
-                                      <span className="truncate">
-                                        {segments.map((seg, sIdx) =>
-                                          seg.match ? (
-                                            <span
-                                              key={sIdx}
-                                              className="text-accent font-extrabold underline decoration-accent/60"
-                                            >
-                                              {seg.text}
-                                            </span>
-                                          ) : (
-                                            <span key={sIdx}>{seg.text}</span>
-                                          )
-                                        )}
-                                      </span>
-                                    </div>
-                                    {locItem.count && locItem.count > 1 ? (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent font-semibold border border-accent/20 flex-shrink-0">
-                                        {locItem.count}x
-                                      </span>
-                                    ) : null}
-                                  </li>
-                                );
-                              })
-                            ) : (
-                              <li className="px-2.5 py-2 text-[11px] text-text-muted text-center italic">
-                                {t("noMatchingLocations")}
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Activity Description */}
-                  <div>
-                    <label className={labelClass}>
-                      <AlignLeft className="w-3 h-3 text-text-faint" /> {t("activityDetails")} *
-                    </label>
-                    <input
-                      type="text"
-                      value={row.activity}
-                      onChange={(e) => updateRow(row.id, { activity: e.target.value })}
-                      placeholder="e.g. Walk Nakamise street, eat melon pan..."
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-
-                {/* Secondary Inputs: Cost & Options */}
-                <div className="flex items-center gap-3 pt-1 flex-wrap">
-                  {/* Currency & Cost */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={row.currency}
-                      onChange={(e) =>
-                        updateRow(row.id, { currency: e.target.value as "JPY" | "THB" })
-                      }
-                      className="px-2 py-1.5 bg-bg-base border border-border rounded-lg text-xs font-bold text-accent focus:outline-none focus:border-accent cursor-pointer"
-                    >
-                      <option value="JPY">¥ JPY</option>
-                      <option value="THB">฿ THB</option>
-                    </select>
-
-                    <input
-                      type="number"
-                      value={row.amount}
-                      onChange={(e) => updateRow(row.id, { amount: e.target.value })}
-                      placeholder="0"
-                      className="w-28 px-2.5 py-1.5 bg-bg-base border border-border rounded-lg text-xs font-mono font-bold text-text-primary focus:outline-none focus:border-accent"
-                    />
-
-                    {/* IC Card Checkbox */}
-                    <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none ml-2">
-                      <input
-                        type="checkbox"
-                        checked={row.isIcCard}
-                        onChange={(e) => updateRow(row.id, { isIcCard: e.target.checked })}
-                        className="rounded border-border text-accent focus:ring-accent"
-                      />
-                      <CreditCard className="w-3.5 h-3.5 text-accent" />
-                      <span>IC Card</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Pass & Remark / Notes (Always Expanded) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-border/50">
-                  <div>
-                    <label className={labelClass}>
-                      <Train className="w-3 h-3 text-accent" /> {t("railPassUsed")}
-                    </label>
-                    <select
-                      value={row.selectedPass}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        updateRow(row.id, {
-                          selectedPass: val,
-                          isCustomMode: val === "__custom__",
-                        });
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="">{t("noPassUsed")}</option>
-                      {availablePasses.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                      <option value="__custom__">{t("otherCustomPass")}</option>
-                    </select>
-                    {row.isCustomMode && (
-                      <input
-                        type="text"
-                        value={row.customPass}
-                        onChange={(e) => updateRow(row.id, { customPass: e.target.value })}
-                        placeholder={t("enterCustomPass")}
-                        className={`${inputClass} mt-1.5`}
-                      />
                     )}
                   </div>
-
-                  <div>
-                    <label className={labelClass}>
-                      <LinkIcon className="w-3 h-3 text-text-faint" /> {t("remarksLinks")}
-                    </label>
-                    <input
-                      type="text"
-                      value={row.remark}
-                      onChange={(e) => updateRow(row.id, { remark: e.target.value })}
-                      placeholder="e.g. URL link or notes"
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* In-between Insert Divider Button */}
-              {idx < rows.length - 1 && (
-                <div className="relative flex items-center justify-center my-1 group/insert">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-dashed border-border/80 group-hover/insert:border-accent/60 transition-colors" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleInsertRow(idx + 1)}
-                    className="relative z-10 px-3.5 py-1.5 rounded-full bg-bg-surface hover:bg-accent text-text-muted hover:text-white border border-border/80 hover:border-accent text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs group-hover/insert:scale-105 cursor-pointer"
-                    title={t("insertStopBetween")
-                      .replace("{prev}", String(idx + 1))
-                      .replace("{next}", String(idx + 2))}
-                  >
-                    <Plus className="w-3.5 h-3.5 text-accent group-hover/insert:text-white transition-colors" />
-                    <span>
-                      {t("insertStopBetween")
-                        .replace("{prev}", String(idx + 1))
-                        .replace("{next}", String(idx + 2))}
-                    </span>
-                  </button>
-                </div>
-              )}
+                );
+              })}
             </div>
-          );
-        })
-        )}
+          )}
 
-          {/* Add Another Stop Button */}
+          {/* Add Another Stop Button at Bottom */}
           {rows.length > 0 && (
-            <button
-              type="button"
-              onClick={handleAddRow}
-              className="w-full py-2.5 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t("addAnotherStop")}</span>
-            </button>
+            <div className="pl-11 sm:pl-14 pt-1">
+              <button
+                type="button"
+                onClick={handleAddRow}
+                className="w-full py-3 rounded-2xl border border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:border-accent shadow-2xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t("addAnotherStop")}</span>
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Footer Summary & Actions */}
-        <div className="px-6 py-4 border-t border-border bg-bg-surface/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-text-muted flex items-center gap-3 flex-wrap">
-            <span>
-              {t("totalEstimatedCost")}:{" "}
-              <strong className="text-text-primary font-mono text-sm">
-                {formatJPY(totalJpy)}
-              </strong>{" "}
-              <span className="text-[11px] text-text-faint">
-                (≈ {formatTHB(totalThb)})
-              </span>
-            </span>
+        {/* Error notification banner if any */}
+        {saveError && (
+          <div className="px-5 sm:px-6 py-2.5 bg-red-500/10 border-t border-red-500/20 text-red-500 text-xs flex items-center justify-between flex-shrink-0">
+            <span>{saveError}</span>
+            <button
+              type="button"
+              onClick={() => setSaveError(null)}
+              className="p-1 hover:bg-red-500/20 rounded-lg text-red-400 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Docked Footer Summary & Actions */}
+        <div className="px-5 sm:px-6 py-4 border-t border-border bg-bg-surface/90 backdrop-blur-xs flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0 z-20">
+          {/* Left: Clear All Stops Button */}
+          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3">
+            <button
+              type="button"
+              onClick={handleClearAllStops}
+              disabled={loading || rows.length === 0}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-red-500 hover:text-red-600 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t("clearAllStops")}</span>
+            </button>
 
             {deletedActivityIds.length > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] font-bold flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] font-bold flex items-center gap-1">
                 <Trash2 className="w-3 h-3" />
                 <span>
                   {t("deletedStopsCount").replace(
@@ -1108,12 +1258,24 @@ export default function BatchActivityModal({
             )}
           </div>
 
+          {/* Center: Total Cost */}
+          <div className="text-xs text-text-muted flex items-center gap-1.5 font-medium">
+            <span>{t("totalEstimatedCost")}:</span>
+            <strong className="text-accent font-bold font-mono text-sm">
+              {formatJPY(totalJpy)}
+            </strong>
+            <span className="text-[11px] text-text-faint">
+              (≈ {formatTHB(totalThb)})
+            </span>
+          </div>
+
+          {/* Right: Cancel & Save Buttons */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-text-muted hover:text-text-primary hover:bg-bg-surface transition-colors disabled:opacity-50 cursor-pointer"
             >
               {t("cancel")}
             </button>
@@ -1121,7 +1283,7 @@ export default function BatchActivityModal({
               type="button"
               disabled={loading}
               onClick={handleSubmitAll}
-              className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-105 disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-light text-white text-xs font-bold shadow-accent transition-all hover:scale-102 disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
             >
               {loading ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1139,6 +1301,51 @@ export default function BatchActivityModal({
           </div>
         </div>
       </div>
+
+      {/* Custom In-App Confirmation Modal for Clearing All Stops */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-bg-card border border-border rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-500">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">
+                  {t("clearAllStops")}
+                </h3>
+                {dayTitle && (
+                  <span className="text-[11px] text-text-muted">
+                    {dayTitle}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs text-text-secondary leading-relaxed">
+              {t("confirmClearAllStops")}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirmModal(false)}
+                className="px-4 py-2 rounded-xl border border-border text-text-muted hover:text-text-primary hover:bg-bg-surface text-xs font-semibold cursor-pointer transition-colors"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearAll}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md shadow-red-600/30 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t("clearAllStops")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
