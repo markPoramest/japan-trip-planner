@@ -159,28 +159,26 @@ export default function PassModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Validity Days */}
-            <div>
-              <label className={labelClass}>
-                <Calendar className="w-3.5 h-3.5 text-accent" /> {t("validDays")}
+          {/* Price & Currency in the same row */}
+          <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <Ticket className="w-3.5 h-3.5 text-olive" />
+                <span>{t("passCostJpy")} / {t("currency")}</span>
               </label>
-              <input
-                type="number"
-                min="1"
-                max="30"
-                value={validDays}
-                onChange={(e) => setValidDays(e.target.value)}
-                placeholder="e.g. 3"
-                className={inputClass}
-              />
             </div>
 
-            {/* Currency selector */}
-            <div>
-              <label className={labelClass}>
-                {t("currency")}
-              </label>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  value={amountValue}
+                  onChange={(e) => setAmountValue(e.target.value)}
+                  placeholder={inputCurrency === "JPY" ? "¥ 15,000" : "฿ 3,500"}
+                  className={`${inputClass} font-mono text-base font-bold`}
+                />
+              </div>
+
               <select
                 value={inputCurrency}
                 onChange={(e) => {
@@ -194,26 +192,12 @@ export default function PassModal({
                   }
                   setInputCurrency(newCurr);
                 }}
-                className="w-full px-3.5 py-2.5 bg-bg-base border border-border rounded-xl text-sm font-bold text-accent focus:outline-none focus:border-accent cursor-pointer"
+                className="w-32 sm:w-36 px-3 py-2.5 bg-bg-base border border-border rounded-xl text-xs sm:text-sm font-bold text-accent focus:outline-none focus:border-accent cursor-pointer shrink-0"
               >
                 <option value="JPY">JPY (¥ เยน)</option>
                 <option value="THB">THB (฿ บาท)</option>
               </select>
             </div>
-          </div>
-
-          {/* Amount input */}
-          <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-2">
-            <label className="text-xs font-bold text-text-secondary uppercase tracking-wider block">
-              {t("passCostJpy")}
-            </label>
-            <input
-              type="number"
-              value={amountValue}
-              onChange={(e) => setAmountValue(e.target.value)}
-              placeholder={inputCurrency === "JPY" ? "¥ 15,000" : "฿ 3,500"}
-              className={`${inputClass} font-mono text-base font-bold`}
-            />
 
             {numVal > 0 && (
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
@@ -230,17 +214,36 @@ export default function PassModal({
             )}
           </div>
 
-          <div>
-            <label className={labelClass}>
-              <FileText className="w-3.5 h-3.5 text-text-faint" /> {t("bookingRef")}
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Klook voucher ref #789012"
-              className={inputClass}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Validity Days */}
+            <div>
+              <label className={labelClass}>
+                <Calendar className="w-3.5 h-3.5 text-accent" /> {t("validDays")}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={validDays}
+                onChange={(e) => setValidDays(e.target.value)}
+                placeholder="e.g. 7"
+                className={inputClass}
+              />
+            </div>
+
+            {/* Booking Ref / Notes */}
+            <div>
+              <label className={labelClass}>
+                <FileText className="w-3.5 h-3.5 text-text-faint" /> {t("bookingRef")}
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Klook voucher #12345"
+                className={inputClass}
+              />
+            </div>
           </div>
 
           {/* Actions */}
