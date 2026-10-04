@@ -162,11 +162,10 @@ export default function PassModal({
 
           {/* Price & Currency using shared CurrencyCostInput */}
           <CurrencyCostInput
-            label={`${t("passCostJpy")} / ${t("currency")}`}
+            label={t("currencyAndPassCost")}
             amount={amountValue}
             currency={inputCurrency}
             exchangeRate={exchangeRate}
-            icon={<Ticket className="w-3.5 h-3.5 text-olive" />}
             placeholder={inputCurrency === "JPY" ? "¥ 15,000" : "฿ 3,500"}
             onAmountChange={setAmountValue}
             onCurrencyChange={setInputCurrency}
