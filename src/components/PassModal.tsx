@@ -98,18 +98,21 @@ export default function PassModal({
         await updatePass(pass.id, {
           name: name.trim(),
           costJpy: jpyVal || 0,
+          costThb: thbVal || 0,
+          validDays: parseInt(validDays) || undefined,
           notes: notes.trim() || undefined,
         });
       } else {
         await createPass(tripId, {
           name: name.trim(),
           costJpy: jpyVal || 0,
+          costThb: thbVal || 0,
           validDays: parseInt(validDays) || undefined,
           notes: notes.trim() || undefined,
         });
       }
-      router.refresh();
       onClose();
+      router.refresh();
     } catch (err) {
       console.error(err);
       alert("Failed to save transit pass.");
@@ -180,7 +183,17 @@ export default function PassModal({
               </label>
               <select
                 value={inputCurrency}
-                onChange={(e) => setInputCurrency(e.target.value as "JPY" | "THB")}
+                onChange={(e) => {
+                  const newCurr = e.target.value as "JPY" | "THB";
+                  if (newCurr !== inputCurrency && numVal > 0) {
+                    if (newCurr === "THB") {
+                      setAmountValue(Math.round(numVal * exchangeRate).toString());
+                    } else {
+                      setAmountValue(exchangeRate > 0 ? Math.round(numVal / exchangeRate).toString() : numVal.toString());
+                    }
+                  }
+                  setInputCurrency(newCurr);
+                }}
                 className="w-full px-3.5 py-2.5 bg-bg-base border border-border rounded-xl text-sm font-bold text-accent focus:outline-none focus:border-accent cursor-pointer"
               >
                 <option value="JPY">JPY (¥ เยน)</option>

@@ -422,19 +422,21 @@ export async function swapTripDays(tripId: string, dayIdA: string, dayIdB: strin
   };
 }
 
-export async function createPass(tripId: string, data: { name: string; costJpy?: number; validDays?: number; notes?: string }) {
+export async function createPass(tripId: string, data: { name: string; costJpy?: number; costThb?: number; validDays?: number; notes?: string }) {
   await verifyTripOwnership(tripId);
 
   const pass = await db.passBooking.create({
     data: {
       tripId,
       name: data.name,
-      costJpy: data.costJpy ? Number(data.costJpy) : null,
+      costJpy: data.costJpy !== undefined ? Number(data.costJpy) : null,
+      costThb: data.costThb !== undefined ? Number(data.costThb) : null,
       validDays: data.validDays ? Number(data.validDays) : null,
       notes: data.notes || null,
     },
   });
   revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/bookings`);
   revalidatePath("/trips");
   return pass;
 }
@@ -1043,7 +1045,7 @@ export async function updateHotel(id: string, data: {
 }
 
 export async function updatePass(id: string, data: {
-  name?: string; costJpy?: number; costThb?: number; notes?: string;
+  name?: string; costJpy?: number; costThb?: number; validDays?: number; notes?: string;
 }) {
   const existing = await db.passBooking.findUnique({ where: { id }, select: { tripId: true } });
   if (!existing) throw new Error("Pass not found");

@@ -79,5 +79,9 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Horizontal warm beige card (`bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs`).
   - Left: Circular double-ring coin icon (`Coins`), plan cost title, bold font-mono JPY (`¥ 11,940`), and THB approx subtitle, with zero cramped elements.
   - Right: Two-row stacked sub-category breakdown in the same right column (`IC Card Spent` in green with `CreditCard`, percentage pill `50%`, and progress bar; `Cash & Credit Card` in orange with `Wallet`, percentage pill `50%`, and progress bar). Always visible with pure CSS/Tailwind + SVG icons without external image assets.
+- **Dual-Currency Pass Synchronization ([PassModal.tsx](./src/components/PassModal.tsx) & [PassCard.tsx](./src/components/PassCard.tsx))**:
+  - Both `costJpy` and `costThb` are stored in sync using `exchangeRate` when creating or updating a pass.
+  - Toggling between `JPY` and `THB` in `PassModal` dynamically converts the input value.
+  - `PassCard.tsx` automatically protects against 1:1 legacy data (where `costThb === costJpy`) by deriving THB via `passJpy * rate`.
 
 

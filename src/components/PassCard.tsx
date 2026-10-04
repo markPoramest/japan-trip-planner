@@ -130,7 +130,12 @@ export default function PassCard({
           <div className="space-y-3">
             {passes.map((pass) => {
               const passJpy = pass.costJpy || (pass.costThb ? pass.costThb / rate : 0);
-              const passThb = pass.costThb || (pass.costJpy ? pass.costJpy * rate : 0);
+              const passThb =
+                pass.costThb && pass.costThb !== pass.costJpy
+                  ? pass.costThb
+                  : passJpy > 0
+                  ? passJpy * rate
+                  : 0;
 
               return (
                 <div key={pass.id} className="p-4 rounded-2xl bg-bg-surface border border-border/80 space-y-2 group">

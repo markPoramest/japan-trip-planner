@@ -195,9 +195,14 @@ japan-trip/
   - Submitting with blank required fields (`Location` or `Activity`) blocks saving without disruptive browser alert popups; instead it immediately highlights invalid inputs with red borders (`* Required`) and smoothly scrolls and auto-focuses on the missing field. No stop rows are silently dropped.
   - Zero browser `alert()` or `window.confirm()` dialogs: clearing all stops uses a dedicated in-app confirmation dialog, and server save errors render an inline dismissible error banner.
 - **Chronological Time Auto-sorting on Save**: Stops are automatically sorted chronologically by scheduled time upon saving (e.g. a stop at 18:00 moves before a stop at 18:30) with stable tie-breaking for identical times in `saveActivitiesBatch`, `createActivitiesBatch`, `createActivity`, and `updateActivity`.
+
+### L. Dual-Currency Pass Synchronization ([PassModal.tsx](./src/components/PassModal.tsx) & [PassCard.tsx](./src/components/PassCard.tsx))
+- **Synchronized Currency Persistence**: When creating (`createPass`) or editing (`updatePass`) a transit pass in `PassModal`, both `costJpy` and `costThb` are computed using `exchangeRate` and persisted to the database together, preventing stale or un-updated dual-currency values.
+- **Dynamic Currency Switch Conversion**: When users toggle between `JPY` and `THB` inside `PassModal`, the input amount automatically recalculates to the equivalent value (`Math.round(amount * rate)` or `Math.round(amount / rate)`).
+- **1:1 Legacy Mismatch Safeguard**: `PassCard.tsx` dynamically guards against stale 1:1 data (where `costThb === costJpy`) by deriving THB via `passJpy * rate`.
 - **Translation Keys**: `manageStops`, `timeRange`, `batchModalSubtitle`, `clearAllStops`, `confirmClearAllStops`, `fieldRequired`, `viewBreakdown` in [src/lib/i18n.ts](./src/lib/i18n.ts).
 
-### L. Revamped Day Cost Stats Banner & Financial Breakdown ([DayTimeline.tsx](./src/components/DayTimeline.tsx))
+### M. Revamped Day Cost Stats Banner & Financial Breakdown ([DayTimeline.tsx](./src/components/DayTimeline.tsx))
 - **Horizontal Landscape Card Layout**:
   - Encased in a warm beige/surface card (`bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs`).
   - **Left Section (Total Day Cost)**: Circular double-ring coin badge with `Coins` icon (`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#FCE8D3] ring-8 ring-[#FCE8D3]/50`), plan cost title (`Total Day Cost`), large bold font-mono JPY (`¥ 11,940`), and THB approx subtitle (`≈ ฿2,507.00`), with full breathing room and zero cramped elements.

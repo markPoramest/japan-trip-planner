@@ -63,7 +63,7 @@ export default async function TripOverviewPage({ params }: Props) {
 
   const totalHotelThb = trip.hotels.reduce((s, h) => s + (h.costThb || 0), 0);
   const totalHotelJpy = trip.hotels.reduce((s, h) => s + (h.costJpy || (h.costThb ? h.costThb / trip.exchangeRate : 0)), 0);
-  const totalPassJpy = trip.passes.reduce((s, p) => s + (p.costJpy || 0), 0);
+  const totalPassJpy = trip.passes.reduce((s, p) => s + (p.costJpy || (p.costThb ? p.costThb / trip.exchangeRate : 0)), 0);
   const totalFlightThb = trip.flights.reduce((s, f) => s + (f.costThb || 0), 0);
 
   const tripData = {
