@@ -22,8 +22,9 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
 - **Prisma CLI**:
   - ❌ NEVER run `npx prisma ...`
   - ✅ Run via: `node node_modules/prisma/build/index.js <command>` (or `npm run db:push`)
-- **Shell Commands**: NEVER propose or run `cd`. Always supply the working directory to tool calls.
-- **Tech Stack**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Prisma ORM 5.22, PostgreSQL (Vercel Postgres/Neon), NextAuth 4.24, Lucide React, AOS.
+- **Testing (Vitest)**:
+  - ✅ Run unit tests: `node node_modules/vitest/vitest.mjs run` (or `cmd /c "npm test"`)
+- **Tech Stack**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Prisma ORM 5.22, PostgreSQL (Vercel Postgres/Neon), NextAuth 4.24, Vitest 2.1, React Testing Library, Lucide React, AOS.
 
 ---
 
@@ -229,6 +230,7 @@ japan-trip/
    - Re-generate client: `node node_modules/prisma/build/index.js generate`.
 3. **Verification**:
    - Run typecheck: `node node_modules/typescript/bin/tsc --noEmit`.
+   - Run unit tests: `node node_modules/vitest/vitest.mjs run`.
 
 For deep architectural reference and runbooks, activate the workspace skill:
 [japan-trip-planner](./.agents/skills/japan-trip-planner/SKILL.md).

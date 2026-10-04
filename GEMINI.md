@@ -13,6 +13,7 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
 - **PowerShell Execution**: Script execution is disabled on this system.
   - Run typecheck with: `node node_modules/typescript/bin/tsc --noEmit` (NEVER `npx tsc`).
   - Run Prisma CLI with: `node node_modules/prisma/build/index.js <command>` (NEVER `npx prisma`).
+  - Run Unit Tests with: `node node_modules/vitest/vitest.mjs run` (or `cmd /c "npm test"`).
   - NEVER execute `cd` commands; supply working directory directly.
 - **Server Actions & Transitions**:
   - All database mutations live in [src/lib/actions.ts](./src/lib/actions.ts) with user authorization checks.
