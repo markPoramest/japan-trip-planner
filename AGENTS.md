@@ -99,9 +99,21 @@ japan-trip/
 - **Plan Swapping**: `swapMainPlan(dayId, newMainPlanId)` demotes the old main plan and promotes the selected plan.
 - **Optimistic UI in [DayTimeline.tsx](./src/components/DayTimeline.tsx)**:
   - `localPlans` state is updated immediately on swap, delete, or rename.
+  - **Zero-Reload Optimistic Plan Deletion**: Deleting a substitute plan immediately removes it from `localPlans` and updates the quota counter with 0ms visual latency, closes the confirmation modal immediately, and syncs to the server in the background via `deleteSubstitutePlan` without calling `router.refresh()` or flashing `loading.tsx`.
   - An animated full-screen portal loading overlay (`isSwapping`) covers the screen during server processing to prevent visual glitches.
   - Dynamic elements in DayTimeline do NOT have `data-aos` attributes to avoid repeated re-animation artifacts.
-  - **Streamlined Header & Tabs Bar**: The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner has been eliminated. The "Edit Plan Name" action is integrated directly into the plan tabs toolbar alongside `{substituteCount} / 3`, cutting unnecessary vertical space.
+  - **Streamlined Header & Integrated Plan Dropdown**:
+    - **Header Stacking & Elevation**: Day timeline header has `relative z-30` ensuring dropdown menus and per-plan kebab sub-menus render floating directly above timeline stops without getting hidden behind activity cards.
+    - **Trigger**: Replaced horizontal plan tabs with a single trigger button with warm border and focus outline, displaying the active plan icon, title, `MAIN` badge, and stop count `({stops} stops)`.
+    - **Dropdown Menu (Mockup Design)**:
+      - **Header**: Shows `Switch plan` on the left and the total plans quota counter including the Main Plan (`{localPlans.length}/3 plans`, e.g. `1/3` with main only, `2/3` with 1 substitute, `3/3` with 2 substitutes) on the top right within a styled pill badge that turns amber when the limit of 3 total plans is reached.
+      - **Plan Card Items & Instant Main Promotion**: Each plan is rendered as a clean card displaying its icon, title, `MAIN` badge, and stop count. The currently selected main plan displays a distinct peach background and orange checkmark (`✓`). Clicking any substitute plan immediately promotes/sets it as the Main plan (`swapMainPlan`) with instant optimistic update and the full-screen loading portal.
+      - **Per-Plan Context Menu (`...` Kebab Button)**: Each plan item has a kebab menu button opening a floating action menu:
+        - For Main Plan: `Rename`, `Duplicate`.
+        - For Substitute Plans: `⭐ Set as main`, `✏️ Rename`, `📋 Duplicate`, and `🗑️ Delete substitute`.
+        - **Quota Enforcement on Duplicate**: When 2 substitute plans exist (`substituteCount >= 2` / `3 plans total`), the `Duplicate` option is disabled (`opacity-40 cursor-not-allowed`) displaying `(Max 3 reached)`.
+        - **Duplication Loading Screen**: Duplicating a plan displays a dedicated animated full-screen portal loading overlay (`isDuplicating`) with the `Copy` icon, locking body scroll until the server clone is saved and revalidated.
+      - **Add Substitute Plan**: Prominent full-width button at the bottom of the dropdown (`+ Add substitute plan`), keeping the entire schedule header sleek and uncluttered. Disabled when 2 substitute plans exist (`substituteCount >= 2`). Scenario Presets are removed for a streamlined, clutter-free creation flow with clean auto-incremented titles (`Plan B`, `Plan C`).
 - **Export, Overview & Summary Views**: Only `isMain: true` plans must be shown on the export page ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx)), summary pages, overview cards ([DayCard.tsx](./src/components/DayCard.tsx) stop count badge and costs), and the Instagram Story generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx)). Never aggregate substitute plan activities into trip or day totals.
 
 ### C. Bilingual i18n (English & Thai)

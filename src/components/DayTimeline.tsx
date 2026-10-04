@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, startTransition } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -16,7 +16,7 @@ import {
   Clock, MapPin, CreditCard, Train, ExternalLink,
   Plus, Edit2, Edit3, Trash2, Banknote, DollarSign, AlertCircle, AlertTriangle, Check, X, Loader2, Globe,
   ArrowRightLeft, Sparkles, CloudRain, Building, Coffee, Zap, Star,
-  Coins, Wallet
+  Coins, Wallet, ChevronDown, Layers, MoreHorizontal, Copy
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -183,7 +183,7 @@ export default function DayTimeline({
 
   // Action status
   const [isSwapping, setIsSwapping] = useState(false);
-  const [isDeletingPlan, setIsDeletingPlan] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   // Swap Plan Modal State
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -198,6 +198,26 @@ export default function DayTimeline({
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Custom Plan Dropdown State & Ref
+  const [planDropdownOpen, setPlanDropdownOpen] = useState(false);
+  const [itemMenuPlanId, setItemMenuPlanId] = useState<string | null>(null);
+  const planDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (planDropdownRef.current && !planDropdownRef.current.contains(event.target as Node)) {
+        setPlanDropdownOpen(false);
+        setItemMenuPlanId(null);
+      }
+    }
+    if (planDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    } else {
+      setItemMenuPlanId(null);
+    }
+  }, [planDropdownOpen]);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setToastMessage({ type, text });
@@ -218,7 +238,8 @@ export default function DayTimeline({
       editPlanModalOpen ||
       swapModalOpen ||
       deletePlanModalOpen ||
-      isSwapping;
+      isSwapping ||
+      isDuplicating;
 
     if (isAnyModalOpen) {
       const orig = document.body.style.overflow;
@@ -227,7 +248,7 @@ export default function DayTimeline({
         document.body.style.overflow = orig;
       };
     }
-  }, [createPlanModalOpen, editPlanModalOpen, swapModalOpen, deletePlanModalOpen, isSwapping]);
+  }, [createPlanModalOpen, editPlanModalOpen, swapModalOpen, deletePlanModalOpen, isSwapping, isDuplicating]);
 
   // Cost calculation for the currently active plan view
   const totalCost = currentActivities.reduce((sum, a) => sum + (a.cost || 0), 0);
@@ -286,11 +307,11 @@ export default function DayTimeline({
 
   // Open Create Plan Modal with smart defaults
   function handleOpenCreatePlanModal() {
-    if (substituteCount >= 3) {
+    if (substituteCount >= 2) {
       showToast(t("maxSubstitutesReached"), "error");
       return;
     }
-    const letters = ["B", "C", "D"];
+    const letters = ["B", "C"];
     const existingTitles = localPlans.map((p) => p.title.toLowerCase());
     let nextLetter = letters[substituteCount] || "B";
     for (const l of letters) {
@@ -300,40 +321,12 @@ export default function DayTimeline({
       }
     }
 
-    const defaultTitle = `Plan ${nextLetter} (${t("rainyDay")})`;
+    const defaultTitle = `Plan ${nextLetter}`;
     setNewPlanTitle(defaultTitle);
-    setNewPlanTag("rainy");
+    setNewPlanTag("backup");
     setNewPlanNotes("");
     setCopyActivities(true);
     setCreatePlanModalOpen(true);
-  }
-
-  // Handle Preset Button Click in Create Modal
-  function handleSelectPreset(presetTag: string) {
-    setNewPlanTag(presetTag);
-    const letters = ["B", "C", "D"];
-    const existingTitles = localPlans.map((p) => p.title.toLowerCase());
-    let nextLetter = letters[substituteCount] || "B";
-    for (const l of letters) {
-      if (!existingTitles.some((tit) => tit.includes(`plan ${l.toLowerCase()}`))) {
-        nextLetter = l;
-        break;
-      }
-    }
-
-    if (presetTag === "rainy") {
-      setNewPlanTitle(`Plan ${nextLetter} (${t("rainyDay")})`);
-      setNewPlanNotes("Indoor contingency for rain or bad weather");
-    } else if (presetTag === "indoor") {
-      setNewPlanTitle(`Plan ${nextLetter} (${t("indoorShopping")})`);
-      setNewPlanNotes("Museums, aquariums, department stores, and arcades");
-    } else if (presetTag === "chill") {
-      setNewPlanTitle(`Plan ${nextLetter} (${t("relaxedPace")})`);
-      setNewPlanNotes("Slow-paced cafe hopping, gardens, and leisure walking");
-    } else if (presetTag === "backup") {
-      setNewPlanTitle(`Plan ${nextLetter} (${t("backupRoute")})`);
-      setNewPlanNotes("Alternative transit or detour route");
-    }
   }
 
   // Submit Create Plan
@@ -344,7 +337,7 @@ export default function DayTimeline({
     try {
       const newPlan = await createSubstitutePlan(dayId, {
         title: newPlanTitle.trim(),
-        tag: newPlanTag,
+        tag: "backup",
         notes: newPlanNotes.trim() || undefined,
         copyFromPlanId: copyActivities && mainPlan ? mainPlan.id : undefined,
       });
@@ -372,16 +365,19 @@ export default function DayTimeline({
   }
 
   // Confirm Swap Plan to Main with Loading Page Overlay
-  async function handleConfirmSwap() {
-    if (!planToSwap || !isOwner) return;
+  async function handleConfirmSwap(planOverride?: DayPlanData) {
+    const targetPlan = planOverride || planToSwap;
+    if (!targetPlan || !isOwner) return;
 
     const previousPlans = localPlans;
     const previousTitle = currentTitle;
-    const targetPlanId = planToSwap.id;
-    const targetTitle = planToSwap.title;
+    const targetPlanId = targetPlan.id;
+    const targetTitle = targetPlan.title;
 
-    // Close the swap modal and activate full-screen loading overlay
+    // Close any open modals and activate full-screen loading overlay
     setSwapModalOpen(false);
+    setPlanDropdownOpen(false);
+    setItemMenuPlanId(null);
     setIsSwapping(true);
 
     try {
@@ -431,7 +427,7 @@ export default function DayTimeline({
     setDeletePlanModalOpen(true);
   }
 
-  // Confirm Delete Plan (instant optimistic update)
+  // Confirm Delete Plan (instant optimistic update without page reload)
   async function handleConfirmDeletePlan() {
     if (!planToDelete || !isOwner) return;
 
@@ -441,25 +437,97 @@ export default function DayTimeline({
 
     // 1. Instant optimistic update
     setLocalPlans((prev) => prev.filter((p) => p.id !== deletedId));
-    setSelectedPlanId(mainPlan.id);
+    if (selectedPlanId === deletedId) {
+      setSelectedPlanId(mainPlan.id);
+    }
     setDeletePlanModalOpen(false);
+    setPlanToDelete(null);
     showToast(
       t("substitutePlanDeleted", { title: deletedTitle })
     );
 
-    // 2. Background server sync
-    setIsDeletingPlan(true);
+    // 2. Background server sync (zero page reload)
     try {
       await deleteSubstitutePlan(deletedId);
-      startTransition(() => {
-        router.refresh();
-      });
     } catch (err: any) {
       console.error(err);
       setLocalPlans(previousPlans);
       showToast(err?.message || "Failed to delete plan", "error");
+    }
+  }
+
+  // Duplicate an existing plan (Main or Substitute)
+  async function handleDuplicatePlan(sourcePlan: DayPlanData) {
+    if (!isOwner) return;
+    if (substituteCount >= 2) {
+      showToast(t("maxSubstitutesReached"), "error");
+      return;
+    }
+
+    const letters = ["B", "C"];
+    const existingTitles = localPlans.map((p) => p.title.toLowerCase());
+    let nextLetter = letters[substituteCount] || "B";
+    for (const l of letters) {
+      if (!existingTitles.some((tit) => tit.includes(`plan ${l.toLowerCase()}`))) {
+        nextLetter = l;
+        break;
+      }
+    }
+
+    const dupTitle = `${sourcePlan.title} (Copy)`;
+    const tempId = `temp-dup-${Date.now()}`;
+    const duplicatedPlan: DayPlanData = {
+      id: tempId,
+      title: dupTitle,
+      tag: sourcePlan.tag || "backup",
+      isMain: false,
+      sortOrder: (localPlans.reduce((max, p) => Math.max(max, p.sortOrder), 0) || 0) + 1,
+      notes: sourcePlan.notes,
+      activities: sourcePlan.activities.map((act, i) => ({
+        ...act,
+        id: `temp-act-${Date.now()}-${i}`,
+      })),
+    };
+
+    // Close menu & dropdown
+    setItemMenuPlanId(null);
+    setPlanDropdownOpen(false);
+
+    // Show loading overlay
+    setIsDuplicating(true);
+
+    try {
+      const created = await createSubstitutePlan(dayId, {
+        title: dupTitle,
+        tag: sourcePlan.tag || "backup",
+        notes: sourcePlan.notes || undefined,
+        copyFromPlanId: sourcePlan.id,
+      });
+
+      const finalId = created?.id || tempId;
+      setLocalPlans((prev) => [
+        ...prev,
+        {
+          ...duplicatedPlan,
+          id: finalId,
+        },
+      ]);
+      setSelectedPlanId(finalId);
+
+      startTransition(() => {
+        router.refresh();
+      });
+
+      // Brief delay to allow new state and render to settle cleanly
+      await new Promise((r) => setTimeout(r, 600));
+
+      showToast(t("planDuplicatedSuccess"));
+    } catch (err: any) {
+      console.error(err);
+      setSelectedPlanId(sourcePlan.id);
+      showToast(err?.message || "Failed to duplicate plan", "error");
     } finally {
-      setIsDeletingPlan(false);
+      setIsDuplicating(false);
     }
   }
 
@@ -514,8 +582,8 @@ export default function DayTimeline({
 
   return (
     <div className="space-y-6">
-      {/* Day Header & Live Stats */}
-      <div data-aos="fade-down" className="bg-bg-card border border-border rounded-3xl p-4 sm:p-5 shadow-card space-y-3.5 sm:space-y-4">
+      {/* Day Header & Live Stats (z-30 ensures plan dropdown renders above timeline stops) */}
+      <div data-aos="fade-down" className="relative z-30 bg-bg-card border border-border rounded-3xl p-4 sm:p-5 shadow-card space-y-3.5 sm:space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -618,137 +686,266 @@ export default function DayTimeline({
             PLAN SWITCHER TABS & SUBSTITUTE PLANS
         ───────────────────────────────────────────────────────────── */}
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-1 min-w-0">
-              {localPlans.map((plan) => {
-                const isSelected = plan.id === activePlan.id;
-                return (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => setSelectedPlanId(plan.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${isSelected
-                      ? plan.isMain
-                        ? "bg-accent text-white shadow-accent"
-                        : "bg-sky-600 text-white shadow-md shadow-sky-600/30"
-                      : "bg-bg-surface text-text-muted hover:text-text-primary hover:bg-bg-surface/80 border border-border"
-                      }`}
-                  >
-                    <span>{getPlanIcon(plan.tag, plan.isMain)}</span>
-                    <span>{plan.title}</span>
-                    {plan.isMain && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/20 text-white font-extrabold tracking-wider">
-                        MAIN
-                      </span>
-                    )}
-                    <span className="text-[10px] opacity-75">
-                      ({plan.activities.length})
-                    </span>
-                  </button>
-                );
-              })}
-
-              {isOwner && substituteCount < 3 && (
-                <button
-                  type="button"
-                  onClick={handleOpenCreatePlanModal}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-accent hover:text-accent-hover bg-accent/10 hover:bg-accent/15 border border-accent/30 transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                  title={t("addSubstitutePlan")}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t("addSubstitutePlan")}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Right side toolbar: Edit Plan Name & Plan Count */}
-            <div className="flex items-center justify-between sm:justify-end gap-2.5 flex-shrink-0 pt-0.5 sm:pt-0">
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingPlanData({
-                      id: activePlan.id,
-                      title: activePlan.title,
-                      tag: activePlan.tag || (activePlan.isMain ? "main" : "backup"),
-                      notes: activePlan.notes || "",
-                    });
-                    setEditPlanModalOpen(true);
-                  }}
-                  className="px-2.5 py-1 rounded-lg border border-border/80 hover:border-accent text-text-muted hover:text-accent transition-colors cursor-pointer text-xs flex items-center gap-1 bg-bg-surface/60"
-                  title={t("editPlanName")}
-                >
-                  <Edit2 className="w-3 h-3" />
-                  <span className="text-[11px] font-medium">{t("editPlanName")}</span>
-                </button>
-              )}
-              <span className="text-[11px] text-text-faint whitespace-nowrap">
-                {substituteCount} / 3 {t(substituteCount === 1 ? "substitutePlan" : "substitutePlans")}
+          {/* Integrated Plan Selector Dropdown */}
+          <div className="relative inline-flex items-center" ref={planDropdownRef}>
+            {/* Trigger Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setPlanDropdownOpen((prev) => !prev);
+                setItemMenuPlanId(null);
+              }}
+              aria-expanded={planDropdownOpen}
+              aria-haspopup="listbox"
+              aria-label={t("selectPlan")}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold border transition-all cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-accent/30 ${
+                planDropdownOpen
+                  ? "bg-bg-card border-accent ring-2 ring-accent/20 text-text-primary"
+                  : "bg-bg-card border-[#FDE5D4] dark:border-border hover:border-accent text-text-primary"
+              }`}
+            >
+              <span className="text-base sm:text-lg leading-none shrink-0">
+                {activePlan.isMain ? "⭐" : "📋"}
               </span>
-            </div>
-          </div>
+              <span className="truncate max-w-[200px] sm:max-w-xs text-left font-bold text-text-primary">
+                {activePlan.title}
+              </span>
+              {activePlan.isMain && (
+                <span className="px-1.5 py-0.5 rounded-md bg-[#FFF2EA] dark:bg-accent/20 text-[#EA580C] dark:text-accent font-extrabold text-[10px] uppercase tracking-wide">
+                  MAIN
+                </span>
+              )}
+              <span className="text-text-muted font-normal text-xs">
+                ({activePlan.activities.length} {activePlan.activities.length === 1 ? t("stopSingle") : t("stops")})
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-text-muted shrink-0 transition-transform duration-200 ml-0.5 ${
+                  planDropdownOpen ? "rotate-180 text-accent" : ""
+                }`}
+              />
+            </button>
 
-          {/* Active Plan Status Banner (Only for Substitute Plans) */}
-          {!activePlan.isMain && (
-            <div className="mt-2.5 bg-sky-500/10 border border-sky-500/30 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs animate-in fade-in duration-200">
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 font-bold text-[10px] border border-sky-500/30">
-                    {t("substitutePlan")}
+            {/* Dropdown Menu Popup (Design matching user mockup) */}
+            {planDropdownOpen && (
+              <div
+                role="listbox"
+                aria-label={t("selectPlan")}
+                className="absolute left-0 top-full mt-2 w-80 sm:w-96 bg-[#FFFDFB] dark:bg-bg-card border border-[#F3E7DC] dark:border-border/80 rounded-3xl shadow-2xl z-30 p-3 sm:p-4 animate-in fade-in zoom-in-95 duration-150"
+              >
+                {/* Header: Switch plan & X/3 plans */}
+                <div className="flex items-center justify-between pb-3 px-1 text-xs font-semibold text-text-muted">
+                  <span className="text-[#374151] dark:text-text-primary font-bold">
+                    {t("switchPlan")}
                   </span>
-                  <span className="font-bold text-text-primary text-xs truncate">
-                    {activePlan.title}
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+                      localPlans.length >= 3
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                        : "bg-bg-surface text-text-muted border-border/60"
+                    }`}
+                  >
+                    {t("substitutePlansLimit", { count: localPlans.length, max: 3 })}
                   </span>
                 </div>
-                {activePlan.notes && (
-                  <p className="text-text-muted text-[11px] truncate">
-                    {activePlan.notes}
-                  </p>
+
+                {/* Plans List */}
+                <div className="space-y-2 py-1 max-h-72 overflow-y-visible">
+                  {localPlans.map((plan) => {
+                    const isSelected = plan.id === activePlan.id;
+                    const isItemMenuOpen = itemMenuPlanId === plan.id;
+
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`relative rounded-2xl border transition-all ${
+                          isSelected
+                            ? "bg-[#FFF6F0] dark:bg-accent/10 border-accent/30 shadow-xs"
+                            : "bg-transparent border-transparent hover:bg-bg-surface hover:border-border/60"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3">
+                          {/* Plan Click Area: clicking another plan sets it as the main plan */}
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setItemMenuPlanId(null);
+                              setPlanDropdownOpen(false);
+                              if (!plan.isMain && isOwner) {
+                                handleConfirmSwap(plan);
+                              } else {
+                                setSelectedPlanId(plan.id);
+                              }
+                            }}
+                            className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer group"
+                          >
+                            <span className="text-lg shrink-0">
+                              {plan.isMain ? "⭐" : "📋"}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-xs sm:text-sm font-bold truncate ${
+                                  isSelected ? "text-[#1F2937] dark:text-white" : "text-text-primary"
+                                }`}>
+                                  {plan.title}
+                                </span>
+                                {plan.isMain && (
+                                  <span className="px-1.5 py-0.2 rounded-md bg-[#FFF2EA] dark:bg-accent/20 text-[#EA580C] dark:text-accent font-extrabold text-[9px] uppercase tracking-wide shrink-0">
+                                    MAIN
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-text-muted font-normal block mt-0.5">
+                                {plan.activities.length} {plan.activities.length === 1 ? t("stopSingle") : t("stops")}
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Right Controls: Checkmark for Active Plan & Kebab Menu Button */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-[#EA580C] dark:text-accent stroke-[2.5]" />
+                            )}
+
+                            {isOwner && (
+                              <button
+                                type="button"
+                                aria-label="Plan actions"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setItemMenuPlanId(isItemMenuOpen ? null : plan.id);
+                                }}
+                                className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                                  isItemMenuOpen
+                                    ? "bg-bg-surface border-accent text-accent"
+                                    : "bg-bg-surface/80 border-border/70 hover:border-accent text-text-muted hover:text-text-primary"
+                                }`}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Floating Action Menu for this Plan Item */}
+                        {isItemMenuOpen && (
+                          <div className="absolute right-0 top-full mt-1.5 w-48 sm:w-52 bg-bg-card border border-border/90 rounded-2xl shadow-xl z-40 p-1.5 animate-in fade-in zoom-in-95 duration-150">
+                            {/* Option: Set as main (Only for substitute plans) */}
+                            {!plan.isMain && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setItemMenuPlanId(null);
+                                  setPlanDropdownOpen(false);
+                                  handleConfirmSwap(plan);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-primary hover:bg-[#FFF6F0] dark:hover:bg-accent/15 hover:text-accent transition-colors text-left cursor-pointer"
+                              >
+                                <Star className="w-4 h-4 text-amber-500 shrink-0" />
+                                <span>{t("setAsMain")}</span>
+                              </button>
+                            )}
+
+                            {/* Option: Rename */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setItemMenuPlanId(null);
+                                setPlanDropdownOpen(false);
+                                setEditingPlanData({
+                                  id: plan.id,
+                                  title: plan.title,
+                                  tag: plan.tag || (plan.isMain ? "main" : "backup"),
+                                  notes: plan.notes || "",
+                                });
+                                setEditPlanModalOpen(true);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-primary hover:bg-[#FFF6F0] dark:hover:bg-accent/15 hover:text-accent transition-colors text-left cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4 text-text-muted shrink-0" />
+                              <span>{t("rename")}</span>
+                            </button>
+
+                            {/* Option: Duplicate */}
+                            <button
+                              type="button"
+                              disabled={substituteCount >= 2}
+                              onClick={() => {
+                                if (substituteCount >= 2) return;
+                                setItemMenuPlanId(null);
+                                setPlanDropdownOpen(false);
+                                handleDuplicatePlan(plan);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left ${
+                                substituteCount >= 2
+                                  ? "opacity-40 cursor-not-allowed text-text-muted select-none"
+                                  : "text-text-primary hover:bg-[#FFF6F0] dark:hover:bg-accent/15 hover:text-accent cursor-pointer"
+                              }`}
+                              title={substituteCount >= 2 ? t("maxSubstitutesReached") : t("duplicate")}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Copy className="w-4 h-4 text-text-muted shrink-0" />
+                                <span>{t("duplicate")}</span>
+                              </div>
+                              {substituteCount >= 2 && (
+                                <span className="text-[10px] text-text-faint font-medium">
+                                  {t("maxLimitReachedLabel")}
+                                </span>
+                              )}
+                            </button>
+
+                            {/* Option: Delete substitute (Only for substitute plans) */}
+                            {!plan.isMain && (
+                              <>
+                                <div className="h-px bg-border/60 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setItemMenuPlanId(null);
+                                    setPlanDropdownOpen(false);
+                                    handleOpenDeletePlanModal(plan);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-500/10 transition-colors text-left cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500 shrink-0" />
+                                  <span>{t("deleteSubstitute")}</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Button: + Add substitute plan */}
+                {isOwner && (
+                  <div className="pt-3 mt-1">
+                    {substituteCount < 2 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlanDropdownOpen(false);
+                          setItemMenuPlanId(null);
+                          handleOpenCreatePlanModal();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-[#EA580C] dark:text-accent bg-[#FFF5EE] dark:bg-accent/10 border border-[#FCD4BE] dark:border-accent/40 hover:bg-[#FFEAE0] dark:hover:bg-accent/20 transition-all cursor-pointer shadow-xs active:scale-98"
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                        <span>{t("addSubstitutePlan")}</span>
+                      </button>
+                    ) : (
+                      <div className="py-2 text-[11px] text-text-faint text-center bg-bg-surface rounded-2xl border border-border/50">
+                        {t("maxSubstitutesReached")}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-
-              {isOwner && (
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenSwapModal(activePlan)}
-                    disabled={isSwapping}
-                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent to-amber-600 hover:from-accent-hover hover:to-amber-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <ArrowRightLeft className="w-3 h-3" />
-                    <span>{isSwapping ? "..." : t("swapToMain")}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingPlanData({
-                        id: activePlan.id,
-                        title: activePlan.title,
-                        tag: activePlan.tag || "backup",
-                        notes: activePlan.notes || "",
-                      });
-                      setEditPlanModalOpen(true);
-                    }}
-                    className="p-1.5 rounded-lg border border-border hover:border-accent text-text-muted hover:text-accent transition-colors cursor-pointer"
-                    title={t("editPlan")}
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDeletePlanModal(activePlan)}
-                    disabled={isDeletingPlan}
-                    className="p-1.5 rounded-lg border border-border hover:border-red-500/50 hover:bg-red-500/10 text-text-muted hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
-                    title={t("deletePlan")}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Live Cost Stats Banner */}
@@ -1094,37 +1291,9 @@ export default function DayTimeline({
                   required
                   value={newPlanTitle}
                   onChange={(e) => setNewPlanTitle(e.target.value)}
-                  placeholder="e.g. Plan B (Rainy Day)"
+                  placeholder="e.g. Plan B (Otaru)"
                   className="w-full bg-bg-base border border-border rounded-xl px-3.5 py-2.5 text-text-primary placeholder-text-faint focus:outline-none focus:border-accent"
                 />
-              </div>
-
-              {/* Scenario Presets */}
-              <div>
-                <label className="block text-text-secondary font-semibold mb-1.5">
-                  {t("scenarioPreset")}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { tag: "rainy", label: t("rainyDay"), icon: "🌧️" },
-                    { tag: "indoor", label: t("indoorShopping"), icon: "🏛️" },
-                    { tag: "chill", label: t("relaxedPace"), icon: "☕" },
-                    { tag: "backup", label: t("backupRoute"), icon: "⚡" },
-                  ].map((preset) => (
-                    <button
-                      key={preset.tag}
-                      type="button"
-                      onClick={() => handleSelectPreset(preset.tag)}
-                      className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${newPlanTag === preset.tag
-                        ? "bg-accent/15 border-accent text-accent font-bold"
-                        : "bg-bg-surface border-border text-text-muted hover:border-accent/40"
-                        }`}
-                    >
-                      <span className="text-base">{preset.icon}</span>
-                      <span className="truncate">{preset.label}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Trigger Notes */}
@@ -1298,6 +1467,37 @@ export default function DayTimeline({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          LOADING OVERLAY: DISPLAYED WHILE DUPLICATING PLAN
+      ───────────────────────────────────────────────────────────── */}
+      {isDuplicating && mounted && createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-bg-card border border-border rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-2xl bg-accent/20 animate-ping opacity-75" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent to-amber-500 text-white flex items-center justify-center shadow-lg shadow-accent/30 relative z-10">
+                <Copy className="w-8 h-8 animate-pulse" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-text-primary">
+                {t("duplicatingPlanLoadingTitle")}
+              </h3>
+              <p className="text-xs text-text-muted leading-relaxed">
+                {t("duplicatingPlanLoadingSubtitle")}
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center gap-2 text-xs font-bold text-accent">
+              <Loader2 className="w-4 h-4 animate-spin text-accent" />
+              <span>{t("pleaseWaitMoment")}</span>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           MODAL: SWAP PLAN TO MAIN WITH DAY TITLE CHANGE OPTION
       ───────────────────────────────────────────────────────────── */}
       {swapModalOpen && planToSwap && (
@@ -1354,7 +1554,7 @@ export default function DayTimeline({
               </button>
               <button
                 type="button"
-                onClick={handleConfirmSwap}
+                onClick={() => handleConfirmSwap()}
                 disabled={isSwapping}
                 className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold shadow-accent transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
@@ -1405,10 +1605,9 @@ export default function DayTimeline({
               <button
                 type="button"
                 onClick={handleConfirmDeletePlan}
-                disabled={isDeletingPlan}
-                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md shadow-red-600/30 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md shadow-red-600/30 transition-all cursor-pointer flex items-center gap-1.5"
               >
-                {isDeletingPlan && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <Trash2 className="w-3.5 h-3.5" />
                 <span>{t("deletePlan")}</span>
               </button>
             </div>

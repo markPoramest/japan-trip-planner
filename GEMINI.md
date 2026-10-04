@@ -21,10 +21,16 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Always wrap `router.refresh()` in `startTransition(() => router.refresh())` in client components to prevent `loading.tsx` flashing.
 - **Substitute Plans**:
   - Exactly one `DayPlan` per `TripDay` has `isMain: true`.
-  - Swapping updates optimistic state first and displays a full-screen loading portal in [DayTimeline.tsx](./src/components/DayTimeline.tsx).
+  - Swapping updates optimistic state first and displays a full-screen loading portal in [DayTimeline.tsx](./src/components/DayTimeline.tsx). Deleting a substitute plan is purely optimistic with 0ms UI update without calling `router.refresh()` or reloading the page.
   - Export, summary, overview views, and Instagram Story generator (including DayCard stop counts and trip totals) must only present and aggregate `isMain: true` plans.
   - Do not apply `data-aos` to dynamic list items in `DayTimeline.tsx`.
-  - The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner is removed; "Edit Plan Name" is placed in the plan tabs toolbar alongside the substitute count to keep the header sleek and compact.
+  - The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner and external plan buttons are removed; plan switching and plan management follow the unified dropdown design:
+    - Header container uses `relative z-30` ensuring dropdown menus and per-plan kebab sub-menus render floating directly above timeline stops without clipping behind activity cards.
+    - Trigger shows active plan with `MAIN` tag and stop count; clicking opens a menu with `Switch plan` header, total plans quota count including Main Plan on top right (`{localPlans.length}/3 plans`, e.g. `1/3` with main only, `2/3` with 1 substitute, `3/3` with 2 substitutes) within a styled badge that turns amber when 3 plans are reached, plan cards with checkmark selection and individual `...` kebab action menus (`Set as main`, `Rename`, `Duplicate`, `Delete substitute`), and a full-width `+ Add substitute plan` button at the bottom.
+    - When 2 substitute plans exist (`substituteCount >= 2` / `3 plans total`), the `Duplicate` action in the kebab menu is disabled with `(Max 3 reached)`.
+    - Duplicating a plan displays a full-screen portal loading screen (`isDuplicating`) with the `Copy` icon and locks body scrolling.
+    - Clicking any substitute plan card immediately promotes it as the Main plan (`swapMainPlan`) with instant optimistic update and full-screen loading portal.
+    - Scenario presets have been removed for a clean, clutter-free creation modal with automated naming (`Plan B`, `Plan C`).
 - **Localization (i18n)**:
   - Add all user-facing copy to both `en` and `th` in [src/lib/i18n.ts](./src/lib/i18n.ts).
   - Do not use inline `language === "th"` ternaries in JSX components.

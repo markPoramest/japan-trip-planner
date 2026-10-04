@@ -7,9 +7,9 @@ This document explains the specialized subsystems of the **Japan Trip Planner**:
 ## 1. Substitute Plans System
 
 ### Concept & Motivation
-In Japan travel, weather (e.g. rain at Mt. Fuji or typhoons in autumn) or unexpected closures frequently require contingency planning. The application allows up to 4 plans per day:
+In Japan travel, weather (e.g. rain at Mt. Fuji or typhoons in autumn) or unexpected closures frequently require contingency planning. The application allows up to 3 plans per day:
 - **1 Main Plan** (`isMain: true`): The current active schedule for the day.
-- **Up to 3 Substitute Plans** (`isMain: false`): Alternative plans tagged as `rainy`, `indoor`, `chill`, `backup`, or `custom`.
+- **Up to 2 Substitute Plans** (`isMain: false`): Alternative plans tagged as `backup`, `rainy`, `indoor`, `chill`, or `custom`.
 
 ### Plan Swapping Lifecycle
 When the user switches a plan to become the new Main plan:
@@ -19,11 +19,17 @@ When the user switches a plan to become the new Main plan:
 4. **Server Action**: `swapMainPlan(dayId, newPlanId)` is executed in [src/lib/actions.ts](../../../../src/lib/actions.ts).
 5. **Revalidation & Settle**: The server runs `revalidatePath()`, the client invokes `startTransition(() => router.refresh())`, and the overlay is dismissed after a 600ms buffer to ensure smooth rendering.
 
+### Plan Deletion Lifecycle
+When deleting a substitute plan:
+1. In [src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx), `handleConfirmDeletePlan()` is triggered.
+2. **Instant Optimistic UI**: `localPlans` is immediately filtered to remove the plan, the quota counter updates instantly, and if the deleted plan was currently viewed, active selection falls back to the main plan. The confirmation modal closes with 0ms visual latency.
+3. **Background Server Sync**: `deleteSubstitutePlan(deletedId)` executes in the background without calling `router.refresh()` or invalidating the active day slug, ensuring the page never reloads or flashes `loading.tsx`.
+
 ### Presentation Rules
 - **Day Card on Overview ([src/components/DayCard.tsx](../../../../src/components/DayCard.tsx))**: Shows the active day itinerary. Stop count badge (`activeActivities.length`), IC card cost, and cash/card cost strictly reflect the active Main Plan (`isMain: true`), never combining substitute plan counts.
 - **Trip Overview Page ([src/app/trips/page.tsx](../../../../src/app/trips/page.tsx))**: Pre-filters days to main plans when computing total activities and trip cost.
 - **Export View ([src/components/ExportItineraryView.tsx](../../../../src/components/ExportItineraryView.tsx))**: Strictly filters out substitute plans and displays ONLY activities from `isMain: true` plans.
-- **Streamlined Header & Tabs Bar ([src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx))**: The redundant "Active Main Plan" (`กำลังใช้งานแผนนี้เป็นหลักอยู่`) banner has been eliminated. The "Edit Plan Name" button is integrated directly into the plan tabs toolbar alongside `{substituteCount} / 3`, significantly trimming vertical header thickness and removing dead space.
+- **Streamlined Header & Integrated Plan Dropdown ([src/components/DayTimeline.tsx](../../../../src/components/DayTimeline.tsx))**: Replaced horizontal plan tab buttons and external toolbar items with a unified dropdown menu matching the mobile/desktop itinerary layout. The header container uses `relative z-30` so the dropdown menu and per-plan kebab sub-menus float cleanly over stop cards without clipping. The trigger button displays the active plan with its `MAIN` badge and stop count; clicking expands a menu featuring a `Switch plan` header with the total plans quota counter including the Main Plan (`{localPlans.length}/3 plans`, e.g. `1/3` with main only, `2/3` with 1 substitute, `3/3` with 2 substitutes) on the top right, selectable plan cards with checkmark indicators (`✓`) and individual `...` kebab menus (`Set as main`, `Rename`, `Duplicate`, `Delete substitute`), and a full-width `+ Add substitute plan` button at the bottom. When 2 substitute plans exist (`substituteCount >= 2` / `3 plans total`), `Duplicate` is disabled with `(Max 3 reached)`. Duplicating a plan displays a dedicated full-screen loading portal (`isDuplicating`) with the `Copy` icon and locks body scrolling. Clicking any plan card immediately sets/promotes it as the Main plan (`swapMainPlan`) with instant optimistic update and full-screen loading portal. Scenario presets have been removed for a clean, streamlined plan creation flow with default sequential naming (`Plan B`, `Plan C`).
 
 ---
 

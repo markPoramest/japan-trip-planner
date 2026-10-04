@@ -109,7 +109,7 @@ startTransition(() => {
 ### 2. Substitute Plans System
 - In [prisma/schema.prisma](../../../prisma/schema.prisma), `TripDay` has multiple `DayPlan` records.
 - Exactly one plan has `isMain: true`.
-- Up to 3 substitute plans (`isMain: false`) can exist per day (e.g. Rainy Day backup, Indoor backup, Chill backup).
+- Up to 2 substitute plans (`isMain: false`) can exist per day (e.g. Rainy Day backup, Indoor backup, Chill backup), allowing up to 3 plans total per day including the Main Plan.
 - In [src/components/DayTimeline.tsx](../../../src/components/DayTimeline.tsx):
   - `localPlans` maintains optimistic plan state.
   - Plan swapping uses a full-screen loading portal overlay (`isSwapping`) with a spinner to provide smooth UX during server revalidation.

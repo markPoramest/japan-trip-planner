@@ -517,12 +517,12 @@ export async function createSubstitutePlan(
   if (!day) throw new Error("Day not found");
 
   const substitutePlans = day.plans.filter((p) => !p.isMain);
-  if (substitutePlans.length >= 3) {
-    throw new Error("Maximum of 3 substitute plans reached for this day");
+  if (substitutePlans.length >= 2) {
+    throw new Error("Maximum of 2 substitute plans reached for this day");
   }
 
-  // Derive next letter code: B, C, D
-  const letters = ["B", "C", "D"];
+  // Derive next letter code: B, C
+  const letters = ["B", "C"];
   const existingTitles = day.plans.map((p) => p.title.toLowerCase());
   let nextLetter = letters[substitutePlans.length] || "B";
   for (const l of letters) {
@@ -668,7 +668,6 @@ export async function deleteSubstitutePlan(planId: string) {
   ]);
 
   revalidatePath(`/trips/${plan.day.tripId}`);
-  revalidatePath(`/trips/${plan.day.tripId}/days/${plan.day.slug}`);
   return { success: true };
 }
 
