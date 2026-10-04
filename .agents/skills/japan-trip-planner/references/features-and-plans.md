@@ -99,6 +99,10 @@ Located at [src/app/trips/[tripId]/export/page.tsx](../../../../src/app/trips/[t
 ## 5. Share & Instagram Story Generator (`ShareTripModal.tsx`)
 
 Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareTripModal.tsx):
+- **Single-View Collapsible Architecture (Default = Folded)**:
+  - Replaced the tab switcher with a single modal view containing independent collapsible accordion rows that **default to folded/collapsed** upon opening (`linkExpanded: false`, `storyExpanded: false`), allowing easy addition of future sharing options (e.g., export formats, other social platforms) as new rows.
+  - **Row 1: Share via Link & Privacy**: Collapsible card with Globe/Lock icon, public/private badge, clean on/off switch (**On** = `Can share`, **Off** = `Can't share`), standard `h-6 w-11` toggle track, copyable link, and native device share button.
+  - **Row 2: Instagram Story (9:16) Generator**: Collapsible card with Instagram icon, 9:16 badge, theme switcher, canvas preview, photo upload slot controls, and PNG download.
 - Generates 9:16 Instagram Story summary cards with full financial estimates and daily route cards.
 - **Top Panel Layout**:
   - Row 1: App logo & branding (`Japan Trip Planner` / `แพลนทริปญี่ปุ่น`) with subtitle on the left; Duration badge (`{durationDays} DAYS` / `{durationDays} วัน`) and decorative Autumn Maple Leaf on the right, eliminating awkward top-right empty space.
@@ -107,27 +111,25 @@ Located at [src/components/ShareTripModal.tsx](../../../../src/components/ShareT
   - **Left Side**: Displays up to 2 user-uploadable travel photos in tilted Polaroid frames with washi tape, custom captions, and Japanese travel calligraphy (`また、日本の旅を。` with localized subtitle). If no photo is uploaded, falls back to CORS-safe default Japanese scenery vector illustrations.
   - **Right Side**: Displays a vertical connected Daily Route timeline (Day 1 - Day N) with orange node dots, day badge (`Day X` / `วันที่ X`), destination titles, and individual day costs (sleek and minimal without misleading landmark icons).
 - **Full Bilingual Localization (EN/TH)**:
-  - All labels across the 9:16 story canvas (app title, subtitle, duration badge, dates in Thai Buddhist Era / Western Gregorian, estimated cost header, 4 category chips, timeline title, and day badges) dynamically adapt to Thai (`th`) and English (`en`) via [src/lib/i18n.ts](../../../../src/lib/i18n.ts).
+  - All labels across the 9:16 story canvas (app title, subtitle, duration badge, dates in Thai Buddhist Era / Western Gregorian, estimated cost header, 4 category chips, timeline title, day badges, collapsible section headers) dynamically adapt to Thai (`th`) and English (`en`) via [src/lib/i18n.ts](../../../../src/lib/i18n.ts).
 - **Clean Footer Brand Stamp**: Minimal footer displaying Japanese travel stamp `🚄 日本旅行` and brand signature `MARK NO NIHON TABI`.
 - Day cards on the story canvas require `dayCostJpy` and activity costs to render non-zero daily totals.
-- Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) must pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.
+- Both [TripOverviewClient.tsx](../../../../src/components/TripOverviewClient.tsx) and [TripsListClient.tsx](../../../../src/components/TripsListClient.tsx) pass `dayCostJpy` and active Main Plan activities (`cost` included) when opening the modal.
 
 ---
 
 ## 6. Financial Summary & Overview Stats Layout (`TripStats.tsx`)
 
 Located at [src/components/TripStats.tsx](../../../../src/components/TripStats.tsx) and matched in [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx):
-- **Core Principle**: Grand Total Estimated is the primary master metric (Main KPI), while Flights, Hotels, Passes, and Daily Activities are its sub-breakdown components.
-- **Two-Column Split Hierarchy**:
-  - **Column 1 (`lg:col-span-4`)**: `Grand Total Estimated` card with high-priority accent border, subtle gradient background, wallet icon in accented badge, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") explanatory subtitle.
-  - **Column 2 (`lg:col-span-8`)**: Sub-category cards row (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) laid out in a horizontal row (`grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4`).
+- **Two-Column 40% / 60% Single-Row Financial Hierarchy**:
+  - **Column 1 (`Grand Total Estimated`, 40% width / `lg:w-2/5`)**: Occupies 40% width on desktop. Features warm peach styling (`bg-[#FFF9F5] border-2 border-accent`), wallet icon badge, `tripAndPocketBudget` subtitle, large bold THB total, JPY approx, and fully visible 6-bar vertical sparkline chart with explicit pixel heights.
+  - **Column 2 (`Flights`, `Hotels`, `Passes`, `Total Everyday`, 60% width / `lg:w-3/5`)**: Arranged in the **same single row** (`grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2`) taking 60% of the row, each with category icons, dual-currency values, spend percentage pill, and gradient progress bar.
+  - Breakdown expand/collapse toggle removed; both columns are permanently visible with identical card height and zero empty space.
 - **Responsive Stacking**:
-  - Mobile (<640px): Grand Total card on top, sub-categories in a 2x2 grid underneath.
-  - Tablet (640px - 1023px): Grand Total card on top full-width, sub-categories in a 4-card row underneath.
-  - Desktop (>=1024px): Grand Total in Col 1 on the left, sub-categories in a 4-card row in Col 2 on the right.
-- **Proportional Spend Progress Bars**:
-  - Each of the 4 sub-category cards contains a percentage pill (`%` of `totalTripEstimatedThb`) and a rounded horizontal gradient progress bar (`h-1.5`) identical to the visual design in `DayTimeline.tsx`.
-- **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact same Col 1 + Col 2 grid structure including matching progress bar shimmer placeholders during page transitions.
+  - Mobile (<640px): Grand Total card on top, 4 sub-category cards in a 2x2 grid underneath.
+  - Tablet (640px - 1023px): Grand Total card on top, 4 sub-category cards in a single row underneath.
+  - Desktop (>=1024px): 40% Grand Total on the left + 60% 4 sub-categories in the same row on the right.
+- **Zero Layout Shift**: [TripOverviewSkeleton.tsx](../../../../src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the exact 40/60 single-row layout and DayCard 2-column cost box during page transitions.
 
 ---
 

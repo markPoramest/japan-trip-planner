@@ -67,33 +67,38 @@ export default function HotelTable({
             <Hotel className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-text-primary">{t("hotelBookings")}</h2>
-              {tripId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingHotel(null);
-                    setModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-bg-surface hover:bg-accent hover:text-white border border-border text-text-muted hover:text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t("addHotel")}</span>
-                </button>
-              )}
-            </div>
+            <h2 className="text-base font-bold text-text-primary">{t("hotelBookings")}</h2>
             <p className="text-xs text-text-muted">{t("accommodationsAlongRoute")}</p>
           </div>
         </div>
 
-        {hotels.length > 0 && (
-          <div className="text-right">
-            <div className="text-xs text-text-muted uppercase font-semibold">{t("totalHotel")}</div>
-            <div className="text-lg font-bold text-text-primary font-mono">{formatTHB(totalThb)}</div>
-            <div className="text-[11px] text-text-muted font-mono">≈ {formatJPY(totalJpy)}</div>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {hotels.length > 0 && (
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-bg-surface/80 border border-border/80 shadow-2xs">
+              <div className="w-2 h-2 rounded-full bg-accent/70 shrink-0" />
+              <div className="text-right">
+                <div className="text-[10px] text-text-muted uppercase tracking-wider font-bold leading-none mb-0.5">{t("totalHotel")}</div>
+                <div className="flex items-baseline justify-end gap-1.5 leading-none">
+                  <span className="text-sm font-extrabold text-text-primary font-mono">{formatTHB(totalThb)}</span>
+                  <span className="text-[11px] text-text-muted font-mono">≈ {formatJPY(totalJpy)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {tripId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingHotel(null);
+                setModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-accent hover:text-white border border-border text-text-secondary text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t("addHotel")}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {hotels.length === 0 ? (
@@ -120,10 +125,10 @@ export default function HotelTable({
               <tr className="border-b border-border text-text-secondary uppercase font-semibold text-[10px] tracking-wider">
                 <th className="pb-3 pl-2">{t("hotelName")}</th>
                 <th className="pb-3">{t("dates")}</th>
-                <th className="pb-3 text-right">{t("costThb")}</th>
                 <th className="pb-3 text-right">{t("costJpy")}</th>
+                <th className="pb-3 text-right">{t("costThb")}</th>
                 <th className="pb-3 pl-4">{t("bookingRef")}</th>
-                {tripId && <th className="pb-3 text-right pr-2">Actions</th>}
+                {tripId && <th className="pb-3 text-right pr-2">{t("manage")}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -135,7 +140,7 @@ export default function HotelTable({
                 return (
                   <tr key={hotel.id} className="hover:bg-bg-surface/60 transition-colors group">
                     <td className="py-3.5 pl-2 font-bold text-text-primary flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                      <Hotel className="w-4 h-4 text-accent shrink-0" />
                       <span>{hotel.name}</span>
                     </td>
                     <td className="py-3.5 text-text-secondary font-medium">
@@ -145,10 +150,10 @@ export default function HotelTable({
                       </div>
                     </td>
                     <td className="py-3.5 text-right font-mono font-bold text-text-primary">
-                      {formatTHB(costThb)}
+                      {formatJPY(costJpy)}
                     </td>
                     <td className="py-3.5 text-right font-mono text-text-muted">
-                      {formatJPY(costJpy)}
+                      {formatTHB(costThb)}
                     </td>
                     <td className="py-3.5 pl-4 text-text-muted font-mono text-[11px]">
                       {hotel.bookingRef || hotel.notes || "-"}

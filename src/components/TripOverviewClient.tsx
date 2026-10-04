@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TripStats from "@/components/TripStats";
@@ -11,6 +11,7 @@ import BudgetBreakdown from "@/components/BudgetBreakdown";
 import EditTripModal from "@/components/EditTripModal";
 import ShareTripModal from "@/components/ShareTripModal";
 import SwapDayModal from "@/components/SwapDayModal";
+import JapanHeroArtwork from "@/components/JapanHeroArtwork";
 import { deleteTrip } from "@/lib/actions";
 import {
   Sparkles,
@@ -27,6 +28,8 @@ import {
   Lock,
   Instagram,
   ArrowLeftRight,
+  MoreVertical,
+  ClipboardList,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -85,11 +88,28 @@ export default function TripOverviewClient({
   const [swapInitialDayId, setSwapInitialDayId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [localDays, setLocalDays] = useState(trip.days);
+  const [mobileKebabOpen, setMobileKebabOpen] = useState(false);
+  const mobileKebabRef = useRef<HTMLDivElement>(null);
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
 
   useEffect(() => {
     setLocalDays(trip.days);
   }, [trip.days]);
+
+  // Handle outside click for mobile kebab menu
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (mobileKebabRef.current && !mobileKebabRef.current.contains(e.target as Node)) {
+        setMobileKebabOpen(false);
+      }
+    }
+    if (mobileKebabOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [mobileKebabOpen]);
 
   // Lock body scroll when delete confirmation modal is open
   useEffect(() => {
@@ -143,6 +163,8 @@ export default function TripOverviewClient({
     });
   }
 
+  const durationDays = localDays.length;
+  const durationNights = Math.max(0, durationDays - 1);
 
   const startStr = new Date(trip.startDate).toLocaleDateString(dateLocale, {
     day: "numeric",
@@ -230,68 +252,148 @@ export default function TripOverviewClient({
         </div>
       )}
 
-      {/* Hero banner with AOS */}
+      {/* ═══════════════════════════════════════════════════════════════
+          HERO BANNER — Warm peach/coral gradient with scenic illustration
+      ═══════════════════════════════════════════════════════════════ */}
       <div
         data-aos="fade-down"
-        className="relative overflow-hidden rounded-3xl bg-card-gradient border border-border p-6 sm:p-10 shadow-earth"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFF8F2] via-[#FFEDD5] to-[#FED7AA] dark:from-bg-card dark:via-bg-card dark:to-accent/10 border border-orange-200/60 dark:border-border p-6 sm:p-10 shadow-earth"
       >
-        <div className="relative z-10 max-w-3xl">
-          <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-            {/* Share / Instagram Story Button */}
+        {/* Top-Right Action Icons */}
+        <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-20 flex items-center gap-2">
+          {/* ═══ MOBILE ONLY: Sleek Kebab Dropdown (MoreVertical) ═══ */}
+          <div className="relative sm:hidden" ref={mobileKebabRef}>
+            <button
+              type="button"
+              onClick={() => setMobileKebabOpen((prev) => !prev)}
+              className="p-2 rounded-2xl bg-white/90 dark:bg-bg-surface/90 hover:bg-white dark:hover:bg-bg-surface border border-orange-200/70 dark:border-border text-text-primary shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center relative"
+              aria-label="Trip actions"
+              aria-expanded={mobileKebabOpen}
+            >
+              <MoreVertical className="w-4 h-4 text-text-secondary" />
+              {/* Privacy indicator dot */}
+              <span
+                className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
+                  trip.isPublic !== false ? "bg-emerald-400" : "bg-neutral-300"
+                }`}
+              />
+            </button>
+
+            {/* Mobile Dropdown Menu */}
+            {mobileKebabOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white/95 dark:bg-bg-card/95 backdrop-blur-md border border-orange-200/70 dark:border-border shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                {/* Share Option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileKebabOpen(false);
+                    setShareModalOpen(true);
+                  }}
+                  className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-text-primary hover:bg-orange-50 dark:hover:bg-bg-surface flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4 text-accent" />
+                  <span className="flex-1">{t("shareTrip")}</span>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      trip.isPublic !== false ? "bg-emerald-400" : "bg-neutral-300"
+                    }`}
+                  />
+                </button>
+
+                {isOwner && (
+                  <>
+                    {/* Edit Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileKebabOpen(false);
+                        setEditModalOpen(true);
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-text-primary hover:bg-orange-50 dark:hover:bg-bg-surface flex items-center gap-2.5 transition-colors cursor-pointer border-t border-border/40"
+                    >
+                      <Edit3 className="w-4 h-4 text-text-secondary" />
+                      <span>{t("editTrip")}</span>
+                    </button>
+
+                    {/* Delete Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileKebabOpen(false);
+                        setShowDeleteModal(true);
+                      }}
+                      className="w-full px-3.5 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center gap-2.5 transition-colors cursor-pointer border-t border-border/40"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <span>{t("deleteTrip")}</span>
+                    </button>
+                  </>
+                )}
+
+                {!isOwner && (
+                  <div className="px-3.5 py-2 text-[11px] text-text-muted flex items-center gap-2 border-t border-border/40">
+                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{t("publicTripViewOnly")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ═══ DESKTOP ONLY: Full Action Icons (sm:flex) ═══ */}
+          <div className="hidden sm:flex items-center gap-2">
+            {/* Share / Instagram Story */}
             <button
               type="button"
               onClick={() => setShareModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent hover:bg-accent-light text-white text-xs font-bold transition-all shadow-accent hover:scale-105 active:scale-95 cursor-pointer"
+              className="p-2 sm:p-2.5 rounded-2xl bg-white/80 dark:bg-bg-surface/80 hover:bg-accent hover:text-white border border-orange-200/60 dark:border-border text-text-secondary shadow-xs hover:shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer relative"
+              title={t("shareTrip")}
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{t("shareTrip")}</span>
+              <Share2 className="w-4 h-4" />
               <span
-                className={`w-2 h-2 rounded-full ${trip.isPublic !== false ? "bg-emerald-300 animate-pulse" : "bg-white/40"
-                  }`}
-                title={trip.isPublic !== false ? "Public" : "Private"}
+                className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
+                  trip.isPublic !== false ? "bg-emerald-400" : "bg-neutral-300"
+                }`}
               />
             </button>
 
             {isOwner && (
-              <button
-                onClick={() => setEditModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-surface hover:bg-accent hover:text-white border border-border text-text-secondary text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{t("editTrip")}</span>
-              </button>
-            )}
+              <>
+                {/* Edit Trip */}
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(true)}
+                  className="p-2 sm:p-2.5 rounded-2xl bg-white/80 dark:bg-bg-surface/80 hover:bg-accent hover:text-white border border-orange-200/60 dark:border-border text-text-secondary shadow-xs hover:shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title={t("editTrip")}
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
 
-            <Link
-              href={`/trips/${trip.id}/export`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent/15 hover:bg-accent text-accent hover:text-white border border-accent/30 text-xs font-bold transition-all shadow-sm active:scale-95"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{t("exportPdf")}</span>
-            </Link>
-
-            {/* Delete Trip Button (Owner only) */}
-            {isOwner && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-surface hover:bg-red-950/40 text-text-muted hover:text-red-400 border border-border hover:border-red-500/30 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                title={t("deleteTrip")}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{t("deleteTrip")}</span>
-              </button>
+                {/* Delete Trip */}
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="p-2 sm:p-2.5 rounded-2xl bg-white/80 dark:bg-bg-surface/80 hover:bg-red-500 hover:text-white hover:border-red-500 border border-orange-200/60 dark:border-border text-text-secondary shadow-xs hover:shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title={t("deleteTrip")}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
             )}
 
             {!isOwner && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bg-surface border border-border text-[11px] font-semibold text-text-muted">
-                <Globe className="w-3 h-3 text-emerald-400" />
-                <span>{t("publicTripViewOnly")}</span>
+              <span
+                className="p-2 sm:p-2.5 rounded-2xl bg-white/80 dark:bg-bg-surface/80 border border-orange-200/60 dark:border-border text-text-muted inline-flex items-center justify-center"
+                title={t("publicTripViewOnly")}
+              >
+                <Globe className="w-4 h-4 text-emerald-400" />
               </span>
             )}
           </div>
+        </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-text-primary tracking-tight leading-tight">
+        <div className="relative z-10 max-w-3xl pr-12 sm:pr-0">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-text-primary tracking-tight leading-tight">
             {trip.title}
           </h1>
           {trip.description && (
@@ -300,18 +402,21 @@ export default function TripOverviewClient({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3 mt-5 text-xs text-text-muted">
-            <span className="flex items-center gap-1.5 bg-bg-surface px-3 py-1.5 rounded-xl border border-border">
+            <span className="flex items-center gap-1.5 bg-white/70 dark:bg-bg-surface px-3 py-1.5 rounded-xl border border-orange-200/50 dark:border-border">
               <Calendar className="w-4 h-4 text-accent/70" /> {startStr} – {endStr}
             </span>
-            <span className="flex items-center gap-1.5 bg-bg-surface px-3 py-1.5 rounded-xl border border-border">
-              <MapPin className="w-4 h-4 text-accent/70" /> {trip.days.length} {t("daysPlanned")}
+            <span className="flex items-center gap-1.5 bg-white/70 dark:bg-bg-surface px-3 py-1.5 rounded-xl border border-orange-200/50 dark:border-border">
+              <MapPin className="w-4 h-4 text-accent/70" /> {durationDays} {t("daysCountSuffix")} {durationNights} {t("nightsCountSuffix")}
             </span>
           </div>
         </div>
 
-        {/* Decorative background logo */}
-        <div className="absolute -right-6 -bottom-10 opacity-10 pointer-events-none select-none">
-          <img src="/logo.png" alt="Logo Watermark" className="w-72 h-72 object-contain" />
+        {/* Decorative Japanese landscape artwork on the right with seasonal theme */}
+        <div className="absolute right-0 bottom-0 w-64 sm:w-80 md:w-96 h-40 sm:h-52 md:h-56 pointer-events-none select-none opacity-90 dark:opacity-40">
+          <JapanHeroArtwork
+            date={trip.startDate}
+            className="w-full h-full object-contain object-right-bottom drop-shadow-sm"
+          />
         </div>
       </div>
 
@@ -327,17 +432,26 @@ export default function TripOverviewClient({
         exchangeRate={trip.exchangeRate}
       />
 
-      {/* Daily Itinerary Grid with AOS */}
+      {/* ════════════ Section Separator ════════════ */}
+      <div className="border-t border-dashed border-border/60" />
+
+      {/* Daily Itinerary Grid */}
       <section className="space-y-6" data-aos="fade-up">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-text-primary tracking-tight">
-              {t("dailySchedule")}
-            </h2>
-            <p className="text-xs text-text-muted mt-0.5">
-              {localDays.length} {t("daysPlanned")}
-            </p>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-2xl bg-accent/10 text-accent border border-accent/20">
+              <ClipboardList className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-text-primary tracking-tight">
+                {t("dailySchedule")}
+              </h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                {localDays.length} {t("daysPlanned")} · {t("clickToViewDetails")}
+              </p>
+            </div>
           </div>
+
           {isOwner && localDays.length > 1 && (
             <button
               type="button"
@@ -369,7 +483,10 @@ export default function TripOverviewClient({
         </div>
       </section>
 
-      {/* Budget Allocations with AOS */}
+      {/* ════════════ Section Separator ════════════ */}
+      <div className="border-t border-dashed border-border/60" />
+
+      {/* Budget Allocations */}
       <div data-aos="fade-up">
         <BudgetBreakdown
           tripId={isOwner ? trip.id : undefined}
@@ -380,7 +497,10 @@ export default function TripOverviewClient({
         />
       </div>
 
-      {/* Hotels, Passes & Flights with AOS */}
+      {/* ════════════ Section Separator ════════════ */}
+      <div className="border-t border-dashed border-border/60" />
+
+      {/* Hotels, Passes & Flights */}
       <section className="space-y-6" data-aos="fade-up">
         <HotelTable
           tripId={isOwner ? trip.id : undefined}
@@ -389,6 +509,10 @@ export default function TripOverviewClient({
           tripStartDate={trip.startDate}
           tripEndDate={trip.endDate}
         />
+
+        {/* ════════════ Section Separator ════════════ */}
+        <div className="border-t border-dashed border-border/60" />
+
         <PassCard
           tripId={isOwner ? trip.id : undefined}
           passes={trip.passes}

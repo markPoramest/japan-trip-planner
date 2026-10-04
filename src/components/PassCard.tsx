@@ -89,25 +89,24 @@ export default function PassCard({
               <Ticket className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-text-primary">{t("railPasses")}</h3>
-                {tripId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingPass(null);
-                      setPassModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-bg-surface hover:bg-olive hover:text-white border border-border text-text-muted hover:text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t("addPass")}</span>
-                  </button>
-                )}
-              </div>
+              <h3 className="text-base font-bold text-text-primary">{t("railPasses")}</h3>
               <p className="text-xs text-text-muted">{t("railPassesSubtitle")}</p>
             </div>
           </div>
+
+          {tripId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingPass(null);
+                setPassModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-olive hover:text-white border border-border text-text-secondary text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t("addPassOrRental")}</span>
+            </button>
+          )}
         </div>
 
         {passes.length === 0 ? (
@@ -123,7 +122,7 @@ export default function PassCard({
                 className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-olive/15 text-olive hover:bg-olive hover:text-white border border-olive/30 font-bold transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{t("addPass")}</span>
+                <span>{t("addPassOrRental")}</span>
               </button>
             )}
           </div>
@@ -134,13 +133,18 @@ export default function PassCard({
               const passThb = pass.costThb || (pass.costJpy ? pass.costJpy * rate : 0);
 
               return (
-                <div key={pass.id} className="p-4 rounded-2xl bg-bg-surface border border-border space-y-2 group">
+                <div key={pass.id} className="p-4 rounded-2xl bg-bg-surface border border-border/80 space-y-2 group">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="font-bold text-text-primary text-sm flex items-center gap-1.5">
-                      <Ticket className="w-4 h-4 text-olive" /> {pass.name}
-                      {pass.validDays && (
-                        <span className="text-[10px] text-text-faint font-normal">({pass.validDays}d)</span>
-                      )}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Train className="w-4 h-4" />
+                      </div>
+                      <div className="font-bold text-text-primary text-sm truncate">
+                        {pass.name}
+                        {pass.validDays && (
+                          <span className="text-[10px] text-text-muted font-normal ml-1">({pass.validDays}d)</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right flex-shrink-0">
@@ -152,14 +156,14 @@ export default function PassCard({
                         </div>
                       </div>
                       {tripId && (
-                        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={() => {
                               setEditingPass(pass);
                               setPassModalOpen(true);
                             }}
-                            className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -167,7 +171,7 @@ export default function PassCard({
                             type="button"
                             disabled={deletingId === pass.id}
                             onClick={() => handleDeletePass(pass.id)}
-                            className="p-1 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -176,7 +180,7 @@ export default function PassCard({
                     </div>
                   </div>
                   {pass.notes && (
-                    <p className="text-xs text-text-muted leading-relaxed border-t border-border/60 pt-2">{pass.notes}</p>
+                    <p className="text-xs text-text-muted leading-relaxed border-t border-border/40 pt-2">{pass.notes}</p>
                   )}
                 </div>
               );
@@ -189,29 +193,28 @@ export default function PassCard({
       <div className="bg-bg-card border border-border rounded-3xl p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-2xl bg-sage/10 text-sage border border-sage-muted">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 border border-teal-500/20">
               <Plane className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-text-primary">{t("flights")}</h3>
-                {tripId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingFlight(null);
-                      setFlightModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-bg-surface hover:bg-sage hover:text-white border border-border text-text-muted hover:text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{t("addFlight")}</span>
-                  </button>
-                )}
-              </div>
+              <h3 className="text-base font-bold text-text-primary">{t("flights")}</h3>
               <p className="text-xs text-text-muted">{t("flightsSubtitle")}</p>
             </div>
           </div>
+
+          {tripId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingFlight(null);
+                setFlightModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-sage hover:text-white border border-border text-text-secondary text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t("addFlight")}</span>
+            </button>
+          )}
         </div>
 
         {flights.length === 0 ? (
@@ -238,13 +241,18 @@ export default function PassCard({
               const fJpy = fThb / rate;
 
               return (
-                <div key={flight.id} className="p-4 rounded-2xl bg-bg-surface border border-border space-y-2 group">
+                <div key={flight.id} className="p-4 rounded-2xl bg-bg-surface border border-border/80 space-y-2 group">
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-text-primary text-sm flex items-center gap-1.5">
-                        <Plane className="w-4 h-4 text-sage" /> {flight.flightNo}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Plane className="w-4 h-4" />
                       </div>
-                      <div className="text-xs text-text-muted mt-0.5">{flight.route}</div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-text-primary text-sm truncate">
+                          {flight.flightNo}
+                        </div>
+                        <div className="text-xs text-text-muted truncate">{flight.route}</div>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right flex-shrink-0">
@@ -256,14 +264,14 @@ export default function PassCard({
                         </div>
                       </div>
                       {tripId && (
-                        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={() => {
                               setEditingFlight(flight);
                               setFlightModalOpen(true);
                             }}
-                            className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-card transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -271,7 +279,7 @@ export default function PassCard({
                             type="button"
                             disabled={deletingId === flight.id}
                             onClick={() => handleDeleteFlight(flight.id)}
-                            className="p-1 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -280,7 +288,7 @@ export default function PassCard({
                     </div>
                   </div>
                   {flight.notes && (
-                    <p className="text-xs text-text-muted leading-relaxed border-t border-border/60 pt-2">{flight.notes}</p>
+                    <p className="text-xs text-text-muted leading-relaxed border-t border-border/40 pt-2">{flight.notes}</p>
                   )}
                 </div>
               );

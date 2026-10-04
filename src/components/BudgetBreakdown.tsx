@@ -57,30 +57,35 @@ export default function BudgetBreakdown({
             <Wallet className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-text-primary">{t("budgetAllocations")}</h3>
-              {tripId && (
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(true)}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-bg-surface hover:bg-accent hover:text-white border border-border text-text-muted hover:text-white text-[11px] font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>{currentBudgets.length > 0 ? t("editBudget") : t("addWallet")}</span>
-                </button>
-              )}
-            </div>
+            <h3 className="text-base font-bold text-text-primary">{t("budgetAllocations")}</h3>
             <p className="text-xs text-text-muted">{t("budgetAllocationsSubtitle")}</p>
           </div>
         </div>
 
-        {currentBudgets.length > 0 && (
-          <div className="text-right">
-            <div className="text-xs text-text-muted uppercase font-semibold">{t("totalPocketBudget")}</div>
-            <div className="text-lg font-bold text-text-primary font-mono">{formatJPY(totalJpy)}</div>
-            <div className="text-[11px] text-text-muted font-mono">≈ {formatTHB(totalThb)}</div>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {currentBudgets.length > 0 && (
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-bg-surface/80 border border-border/80 shadow-2xs">
+              <div className="w-2 h-2 rounded-full bg-accent/70 shrink-0" />
+              <div className="text-right">
+                <div className="text-[10px] text-text-muted uppercase tracking-wider font-bold leading-none mb-0.5">{t("totalPocketBudget")}</div>
+                <div className="flex items-baseline justify-end gap-1.5 leading-none">
+                  <span className="text-sm font-extrabold text-text-primary font-mono">{formatJPY(totalJpy)}</span>
+                  <span className="text-[11px] text-text-muted font-mono">≈ {formatTHB(totalThb)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {tripId && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface hover:bg-accent hover:text-white border border-border text-text-secondary text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{currentBudgets.length > 0 ? t("editBudget") : t("addWallet")}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {currentBudgets.length === 0 ? (
@@ -103,28 +108,35 @@ export default function BudgetBreakdown({
           {currentBudgets.map((b) => {
             const jpyVal = b.amountJpy > 0 ? b.amountJpy : rate > 0 ? b.amountThb / rate : 0;
             const thbVal = b.amountThb > 0 ? b.amountThb : jpyVal * rate;
+            const lower = (b.category || "").toLowerCase();
+            const isIc = lower.includes("ic card") || lower.includes("suica") || lower.includes("pasmo");
+            const isCash = lower.includes("cash") || lower.includes("เงินสด");
+            const iconBg = isIc
+              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50"
+              : isCash
+              ? "bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border-teal-200/50"
+              : "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200/50";
+
             return (
               <div
                 key={b.id}
                 onClick={() => tripId && setModalOpen(true)}
-                className={`p-4 rounded-2xl bg-bg-surface border border-border flex items-center justify-between transition-all ${
-                  tripId ? "cursor-pointer hover:border-accent/40 hover:shadow-sm" : ""
+                className={`p-4 rounded-2xl bg-bg-surface border border-border/80 flex flex-col justify-between transition-all group ${
+                  tripId ? "cursor-pointer hover:border-accent/50 hover:shadow-2xs" : ""
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  {getIcon(b.category)}
-                  <div>
-                    <span className="font-bold text-text-primary text-sm block">{b.category}</span>
-                    <span className="text-[11px] text-text-muted font-mono">
-                      {formatJPY(jpyVal)} ≈ {formatTHB(thbVal)}
-                    </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`p-2 rounded-xl border shrink-0 ${iconBg}`}>
+                    {getIcon(b.category)}
                   </div>
+                  <span className="font-bold text-text-primary text-sm truncate">{b.category}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-base font-mono font-extrabold text-text-primary block">
+
+                <div className="mt-3 pt-2.5 border-t border-border/40 flex items-baseline justify-between">
+                  <span className="text-base font-mono font-extrabold text-text-primary">
                     {formatJPY(jpyVal)}
                   </span>
-                  <span className="text-[11px] font-mono text-accent font-semibold">
+                  <span className="text-xs font-mono text-text-muted">
                     ≈ {formatTHB(thbVal)}
                   </span>
                 </div>

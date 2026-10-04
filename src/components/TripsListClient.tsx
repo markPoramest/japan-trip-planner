@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import SettingsKebab from "@/components/SettingsKebab";
 import ShareTripModal from "@/components/ShareTripModal";
+import JapanHeroArtwork from "@/components/JapanHeroArtwork";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface TripItem {
@@ -103,11 +104,11 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
         onClick={() => setNavigatingTripId(trip.id)}
         data-aos="fade-up"
         data-aos-delay={(index % 4) * 100}
-        className={`bg-bg-card border border-border rounded-3xl p-6 shadow-card hover:border-accent hover:shadow-earth transition-all group flex flex-col justify-between cursor-pointer block select-none ${
+        className={`relative overflow-hidden bg-bg-card border border-border rounded-3xl p-6 shadow-card hover:border-accent hover:shadow-earth transition-all group flex flex-col justify-between cursor-pointer block select-none ${
           isPast ? "opacity-95 hover:opacity-100" : ""
         }`}
       >
-        <div>
+        <div className="relative z-10">
           {/* Badges & title */}
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -141,16 +142,10 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
                 {trip.title}
               </h3>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="Logo"
-              className="w-11 h-11 object-contain flex-shrink-0 group-hover:scale-105 transition-transform drop-shadow-sm"
-            />
           </div>
 
           {trip.description && (
-            <p className="text-sm text-text-muted mt-2 line-clamp-2">
+            <p className="text-sm text-text-muted mt-2 line-clamp-2 max-w-lg">
               {trip.description}
             </p>
           )}
@@ -167,8 +162,17 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
           </div>
         </div>
 
+        {/* Decorative Japanese Landscape Artwork as prominent background (scaled up with seasonal palette) */}
+        <div className="absolute -right-4 top-2 sm:top-0 w-72 sm:w-96 md:w-[420px] h-48 sm:h-64 pointer-events-none select-none opacity-30 dark:opacity-20 group-hover:opacity-45 transition-opacity overflow-hidden z-0">
+          <JapanHeroArtwork
+            idPrefix={`card-${trip.id}`}
+            date={trip.startDate}
+            className="w-full h-full object-contain object-right-bottom"
+          />
+        </div>
+
         {/* Cost snapshot with Dual Display */}
-        <div className="mt-5 pt-4 border-t border-border/60">
+        <div className="mt-5 pt-4 border-t border-border/60 relative z-10">
           <div className="grid grid-cols-3 gap-2 text-xs mb-4">
             <div className="bg-bg-surface rounded-xl p-2.5 border border-border/60">
               <div className="text-text-muted mb-0.5">{t("totalCost")}</div>
@@ -267,7 +271,7 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
         {/* Banner with Japanese Vibe */}
         <div
           data-aos="fade-down"
-          className="relative overflow-hidden rounded-3xl bg-card-gradient border border-border p-8 sm:p-10 shadow-earth flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFF8F2] via-[#FFEDD5] to-[#FED7AA] dark:from-bg-card dark:via-bg-card dark:to-accent/10 border border-orange-200/60 dark:border-border p-8 sm:p-10 shadow-earth flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
         >
           <div className="relative z-10 max-w-xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-wider">
@@ -358,7 +362,7 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
         )}
 
         {/* 2. Previous Plans Section */}
-        {previousTrips.length > 0 && (
+        {trips.length > 0 && (
           <section className="space-y-5 pt-4" data-aos="fade-up">
             <div className="flex items-center gap-3 border-b border-border/60 pb-3">
               <div className="w-8 h-8 rounded-xl bg-bg-surface text-text-muted border border-border flex items-center justify-center">
@@ -374,11 +378,17 @@ export default function TripsListClient({ trips }: { trips: TripItem[] }) {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {previousTrips.map((trip, idx) =>
-                renderTripCard(trip, true, idx)
-              )}
-            </div>
+            {previousTrips.length === 0 ? (
+              <div className="bg-bg-card border border-dashed border-border rounded-2xl p-8 text-center text-text-muted">
+                <p className="text-sm font-medium">{t("noPreviousTrips")}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {previousTrips.map((trip, idx) =>
+                  renderTripCard(trip, true, idx)
+                )}
+              </div>
+            )}
           </section>
         )}
       </main>

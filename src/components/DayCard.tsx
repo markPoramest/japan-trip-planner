@@ -224,30 +224,37 @@ export default function DayCard({
           )}
         </div>
 
-        {/* Cost Summary */}
-        <div className="mt-5 pt-4 border-t border-border/60">
-          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-            <div className="p-2 rounded-xl bg-sage-subtle border border-sage-muted">
-              <div className="text-text-muted flex items-center gap-1 text-[11px]">
-                <CreditCard className="w-3 h-3 text-sage" /> {t("icCardOnly")}
+        {/* Cost Summary Box */}
+        <div className="mt-4 pt-3 border-t border-border/50">
+          <div className="grid grid-cols-2 gap-2 text-xs mb-3 bg-bg-surface/60 dark:bg-bg-surface/30 p-2.5 rounded-2xl border border-border/40">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CreditCard className="w-3.5 h-3.5" />
               </div>
-              <div className="font-semibold text-sage mt-0.5 font-mono">{formatJPY(icCost)}</div>
+              <div className="min-w-0">
+                <div className="text-[10px] text-text-muted truncate">{t("icCardExpense")}</div>
+                <div className="font-bold text-text-primary text-xs font-mono">{formatJPY(icCost)}</div>
+              </div>
             </div>
-            <div className="p-2 rounded-xl bg-sand-subtle border border-sand-muted">
-              <div className="text-text-muted flex items-center gap-1 text-[11px]">
-                <Banknote className="w-3 h-3 text-sand" /> {t("cashAndCredit")}
+
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Banknote className="w-3.5 h-3.5" />
               </div>
-              <div className="font-semibold text-sand mt-0.5 font-mono">{formatJPY(nonIcCost)}</div>
+              <div className="min-w-0">
+                <div className="text-[10px] text-text-muted truncate">{t("cashAndCardExpense")}</div>
+                <div className="font-bold text-text-primary text-xs font-mono">{formatJPY(nonIcCost)}</div>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/60">
+          <div className="flex items-center justify-between pt-1">
             <div>
-              <div className="text-[10px] uppercase font-semibold text-text-faint">{t("total")}</div>
-              <div className="text-base font-bold text-text-primary font-mono">{formatJPY(totalCost)}</div>
+              <div className="text-[10px] font-medium text-text-muted leading-tight">{t("total")}</div>
+              <div className="text-sm sm:text-base font-extrabold text-text-primary font-mono">{formatJPY(totalCost)}</div>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-bg-surface border border-border text-text-secondary group-hover:bg-accent group-hover:border-accent group-hover:text-white text-xs font-bold flex items-center space-x-1.5 transition-all shadow-sm">
+            <div className="px-3 py-1.5 rounded-xl bg-bg-surface border border-border/80 text-text-secondary group-hover:bg-accent group-hover:border-accent group-hover:text-white text-xs font-semibold flex items-center space-x-1 transition-all shadow-2xs">
               {navigating ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-accent group-hover:text-white" />

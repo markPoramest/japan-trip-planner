@@ -25,6 +25,8 @@ import {
   Upload,
   Trash2,
   Plus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
@@ -201,7 +203,8 @@ export default function ShareTripModal({
   const [copiedStory, setCopiedStory] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<"story" | "link">("story");
+  const [linkExpanded, setLinkExpanded] = useState(false);
+  const [storyExpanded, setStoryExpanded] = useState(false);
   const [storyTheme, setStoryTheme] = useState<"dark" | "light">("light");
 
   // Story Custom Photos (Max 2)
@@ -222,6 +225,13 @@ export default function ShareTripModal({
   const fileInputRef1 = useRef<HTMLInputElement>(null);
   const fileInputRef2 = useRef<HTMLInputElement>(null);
   const storyCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLinkExpanded(false);
+      setStoryExpanded(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -447,8 +457,8 @@ ${trip.days.map((d) => `• ${t("dayCountBadge", { count: d.dayNumber })}: ${d.t
   const isDark = storyTheme === "dark";
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-bg-card border border-border rounded-3xl w-full max-w-2xl shadow-2xl my-auto animate-in zoom-in-95 duration-150 relative overflow-hidden flex flex-col max-h-[94vh]">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-bg-card border border-border rounded-3xl w-full max-w-2xl shadow-2xl my-auto animate-in zoom-in-95 duration-150 relative overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-bg-surface/50 flex-shrink-0">
           <div className="flex items-center gap-2.5">
@@ -473,808 +483,828 @@ ${trip.days.map((d) => `• ${t("dayCountBadge", { count: d.dayNumber })}: ${d.t
           </button>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="px-6 pt-3 pb-2 border-b border-border/60 bg-bg-base/40 flex items-center justify-between gap-2 flex-shrink-0">
-          <div className="flex items-center gap-2">
+        {/* Modal Body: Single View with Two Collapsible Rows */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+          {/* ROW 1: Share via Link & Privacy (Collapsible) */}
+          <div className="rounded-3xl bg-bg-surface/50 border border-border overflow-hidden transition-all shadow-xs">
+            {/* Row 1 Header */}
             <button
               type="button"
-              onClick={() => setActiveTab("story")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "story"
-                  ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-sm"
-                  : "text-text-muted hover:text-text-primary hover:bg-bg-surface"
-              }`}
+              onClick={() => setLinkExpanded(!linkExpanded)}
+              className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left hover:bg-bg-surface transition-colors cursor-pointer"
             >
-              <Instagram className="w-3.5 h-3.5" />
-              <span>{t("instagramStoryTab")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("link")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === "link"
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-text-muted hover:text-text-primary hover:bg-bg-surface"
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span>{t("shareLinkPrivacyTab")}</span>
-            </button>
-          </div>
-
-          {/* Theme Switcher for Story Card */}
-          {activeTab === "story" && (
-            <button
-              type="button"
-              onClick={() => setStoryTheme(isDark ? "light" : "dark")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-surface border border-border text-xs font-bold text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm"
-              title={t("toggleStoryTheme")}
-            >
-              {isDark ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{t("lightMode")}</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{t("darkMode")}</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {activeTab === "story" && (
-            <div className="space-y-4">
-              {/* Toolbar & Actions */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                    <span>{t("shareStoryTitle")}</span>
-                  </h4>
-                  <p className="text-[11px] text-text-muted mt-0.5">
-                    {t("shareStoryDesc", { duration: durationDays })}
-                  </p>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-2.5 rounded-2xl border ${isPublic ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"}`}>
+                  {isPublic ? (
+                    <Globe className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={generating}
-                    onClick={handleDownloadStoryImage}
-                    className="p-2 rounded-xl bg-bg-surface hover:bg-bg-elevated border border-border text-text-muted hover:text-text-primary text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                    title={t("downloadStory")}
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={generating}
-                    onClick={handleCopyStoryImage}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50 ${
-                      copiedStory
-                        ? "bg-emerald-600 text-white"
-                        : "bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 hover:opacity-95 text-white active:scale-95"
-                    }`}
-                  >
-                    {generating ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>{t("generatingStory")}</span>
-                      </>
-                    ) : copiedStory ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{t("storyCopied")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{t("copyStoryImage")}</span>
-                      </>
-                    )}
-                  </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-text-primary">
+                      {t("shareViaLinkSection")}
+                    </h4>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPublic ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"}`}>
+                      {isPublic ? t("canShare") : t("cantShare")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted truncate mt-0.5">
+                    {isPublic ? shareUrl : t("privateDesc")}
+                  </p>
                 </div>
               </div>
 
-              {/* Photo Upload Controls Bar (Max 2 Photos for Left Side) */}
-              <div className="bg-bg-surface/70 border border-border/80 rounded-2xl p-3.5 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-xl bg-pink-500/10 text-pink-500 border border-pink-500/20">
-                      <Camera className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h5 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                        <span>{t("storyPhotosTitle")}</span>
-                      </h5>
-                      <p className="text-[10.5px] text-text-muted">
-                        {t("storyPhotosDesc")}
-                      </p>
-                    </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="p-1 rounded-lg text-text-muted hover:text-text-primary">
+                  {linkExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </div>
+              </div>
+            </button>
+
+            {/* Row 1 Body */}
+            {linkExpanded && (
+              <div className="px-5 pb-5 pt-1 border-t border-border/50 space-y-4">
+                {/* Trip Visibility Switcher */}
+                <div className="p-4 rounded-2xl bg-bg-card border border-border/80 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-text-primary block leading-tight">
+                      {t("tripVisibility")}
+                    </span>
+                    <span className={`text-[11px] font-semibold leading-tight ${isPublic ? "text-emerald-500" : "text-amber-500"}`}>
+                      {isPublic ? t("canShare") : t("cantShare")}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-                    {storyPhotos.filter((p) => p.url).length} / 2 {t("photosUnit")}
-                  </span>
+
+                  {isOwner && (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isPublic}
+                      onClick={() => handleToggleVisibility(!isPublic)}
+                      disabled={updatingVisibility}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                        isPublic ? "bg-emerald-600" : "bg-neutral-600 dark:bg-neutral-700"
+                      }`}
+                      title={isPublic ? t("canShare") : t("cantShare")}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          isPublic ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  )}
                 </div>
 
-                {/* Hidden File Inputs */}
-                <input
-                  ref={fileInputRef1}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handlePhotoSelect(0, e)}
-                />
-                <input
-                  ref={fileInputRef2}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handlePhotoSelect(1, e)}
-                />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Photo Slot 1 */}
-                  <div className="p-2.5 rounded-xl bg-bg-card border border-border/70 flex items-center gap-3">
-                    <div
-                      onClick={() => fileInputRef1.current?.click()}
-                      className="w-14 h-14 rounded-lg border border-border/80 overflow-hidden flex-shrink-0 bg-bg-surface flex items-center justify-center cursor-pointer relative group/preview hover:border-accent transition-colors"
-                      title={t("uploadPhoto")}
-                    >
-                      {storyPhotos[0].url ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={storyPhotos[0].url}
-                          alt="Photo 1"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <CastleSceneSvg />
-                      )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
-                        <Upload className="w-3.5 h-3.5" />
-                      </div>
+                {/* Shareable Link Box */}
+                {isPublic ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={shareUrl}
+                        className="flex-1 px-4 py-3 bg-bg-card border border-border rounded-2xl text-xs sm:text-sm font-mono text-text-secondary select-all focus:outline-none shadow-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md active:scale-95 shrink-0 ${
+                          copiedLink
+                            ? "bg-emerald-600 text-white"
+                            : "bg-accent hover:bg-accent-hover text-white"
+                        }`}
+                      >
+                        {copiedLink ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>{t("linkCopied")}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            <span>{t("copyLink")}</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-text-muted uppercase">
-                          {t("photoSlot1")}
-                        </span>
-                        {storyPhotos[0].url && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePhoto(0)}
-                            className="p-1 text-rose-500 hover:text-rose-600 transition-colors"
-                            title={t("removePhoto")}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                    {/* Native Device Share */}
+                    {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                      <button
+                        type="button"
+                        onClick={handleWebShare}
+                        className="w-full py-3 rounded-2xl border border-border bg-bg-card hover:bg-bg-elevated text-xs sm:text-sm font-bold text-text-primary transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <Send className="w-4 h-4 text-accent" />
+                        <span>{t("shareVia")}</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center text-xs text-amber-500 font-medium">
+                    {t("privateDesc")}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ROW 2: Instagram Story 9:16 (Collapsible) */}
+          <div className="rounded-3xl bg-bg-surface/50 border border-border overflow-hidden transition-all shadow-xs">
+            {/* Row 2 Header */}
+            <div className="px-5 py-4 flex items-center justify-between gap-3 bg-bg-surface/50 hover:bg-bg-surface transition-colors">
+              <button
+                type="button"
+                onClick={() => setStoryExpanded(!storyExpanded)}
+                className="flex items-center gap-3 min-w-0 text-left cursor-pointer flex-1"
+              >
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 text-white border border-rose-400/30">
+                  <Instagram className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-text-primary">
+                      {t("instagramStorySection")}
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-600 dark:text-pink-400 border border-pink-500/30">
+                      9:16
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted truncate mt-0.5">
+                    {t("shareStoryDesc", { duration: durationDays })}
+                  </p>
+                </div>
+              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Theme Switcher for Story Card */}
+                {storyExpanded && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStoryTheme(isDark ? "light" : "dark");
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-bg-card border border-border text-xs font-bold text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-xs"
+                    title={t("toggleStoryTheme")}
+                  >
+                    {isDark ? (
+                      <>
+                        <Sun className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="hidden sm:inline">{t("lightMode")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="hidden sm:inline">{t("darkMode")}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setStoryExpanded(!storyExpanded)}
+                  className="p-1 rounded-lg text-text-muted hover:text-text-primary cursor-pointer"
+                >
+                  {storyExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Row 2 Body */}
+            {storyExpanded && (
+              <div className="px-5 pb-5 pt-3 border-t border-border/50 space-y-4">
+                {/* Toolbar & Actions */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-pink-400" />
+                    <span className="text-xs font-bold text-text-primary">
+                      {t("shareStoryTitle")}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={generating}
+                      onClick={handleDownloadStoryImage}
+                      className="p-2.5 rounded-xl bg-bg-card hover:bg-bg-elevated border border-border text-text-muted hover:text-text-primary text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                      title={t("downloadStory")}
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={generating}
+                      onClick={handleCopyStoryImage}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50 ${
+                        copiedStory
+                          ? "bg-emerald-600 text-white"
+                          : "bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 hover:opacity-95 text-white active:scale-95"
+                      }`}
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>{t("generatingStory")}</span>
+                        </>
+                      ) : copiedStory ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{t("storyCopied")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{t("copyStoryImage")}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Photo Upload Controls Bar (Max 2 Photos for Left Side) */}
+                <div className="bg-bg-card/70 border border-border/80 rounded-2xl p-3.5 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-xl bg-pink-500/10 text-pink-500 border border-pink-500/20">
+                        <Camera className="w-4 h-4" />
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div>
+                        <h5 className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                          <span>{t("storyPhotosTitle")}</span>
+                        </h5>
+                        <p className="text-[10.5px] text-text-muted">
+                          {t("storyPhotosDesc")}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+                      {storyPhotos.filter((p) => p.url).length} / 2 {t("photosUnit")}
+                    </span>
+                  </div>
+
+                  {/* Hidden File Inputs */}
+                  <input
+                    ref={fileInputRef1}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhotoSelect(0, e)}
+                  />
+                  <input
+                    ref={fileInputRef2}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhotoSelect(1, e)}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Photo Slot 1 */}
+                    <div className="p-3 rounded-2xl bg-bg-surface border border-border/70 flex items-start gap-3">
+                      <div
+                        onClick={() => fileInputRef1.current?.click()}
+                        className="w-16 h-16 rounded-xl border border-border/80 overflow-hidden flex-shrink-0 bg-bg-card flex items-center justify-center cursor-pointer relative group/preview hover:border-accent transition-colors shadow-2xs"
+                        title={t("uploadPhoto")}
+                      >
+                        {storyPhotos[0].url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={storyPhotos[0].url}
+                            alt="Photo 1"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <CastleSceneSvg />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                          <Upload className="w-4 h-4" />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                            {t("photoSlot1")}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef1.current?.click()}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-bg-card hover:bg-accent hover:text-white border border-border hover:border-accent rounded-lg text-[10px] font-bold text-text-secondary transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Upload className="w-2.5 h-2.5" />
+                              <span>{storyPhotos[0].url ? t("changePhoto") : t("uploadPhoto")}</span>
+                            </button>
+                            {storyPhotos[0].url && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePhoto(0)}
+                                className="p-1 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+                                title={t("removePhoto")}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         <input
                           type="text"
                           value={storyPhotos[0].caption}
                           onChange={(e) => handleCaptionChange(0, e.target.value)}
                           placeholder={t("photoCaptionPlaceholder")}
-                          className="flex-1 px-2 py-1 bg-bg-base border border-border rounded-lg text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                          className="w-full px-2.5 py-1 bg-bg-base border border-border rounded-lg text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                         />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef1.current?.click()}
-                          className="px-2 py-1 bg-bg-surface border border-border hover:border-accent rounded-lg text-[10px] font-bold text-text-secondary hover:text-accent transition-colors flex-shrink-0 cursor-pointer"
-                        >
-                          {storyPhotos[0].url ? t("changePhoto") : t("uploadPhoto")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Photo Slot 2 */}
-                  <div className="p-2.5 rounded-xl bg-bg-card border border-border/70 flex items-center gap-3">
-                    <div
-                      onClick={() => fileInputRef2.current?.click()}
-                      className="w-14 h-14 rounded-lg border border-border/80 overflow-hidden flex-shrink-0 bg-bg-surface flex items-center justify-center cursor-pointer relative group/preview hover:border-accent transition-colors"
-                      title={t("uploadPhoto")}
-                    >
-                      {storyPhotos[1].url ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={storyPhotos[1].url}
-                          alt="Photo 2"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <BridgeSceneSvg />
-                      )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
-                        <Upload className="w-3.5 h-3.5" />
                       </div>
                     </div>
 
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-text-muted uppercase">
-                          {t("photoSlot2")}
-                        </span>
-                        {storyPhotos[1].url && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePhoto(1)}
-                            className="p-1 text-rose-500 hover:text-rose-600 transition-colors"
-                            title={t("removePhoto")}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                    {/* Photo Slot 2 */}
+                    <div className="p-3 rounded-2xl bg-bg-surface border border-border/70 flex items-start gap-3">
+                      <div
+                        onClick={() => fileInputRef2.current?.click()}
+                        className="w-16 h-16 rounded-xl border border-border/80 overflow-hidden flex-shrink-0 bg-bg-card flex items-center justify-center cursor-pointer relative group/preview hover:border-accent transition-colors shadow-2xs"
+                        title={t("uploadPhoto")}
+                      >
+                        {storyPhotos[1].url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={storyPhotos[1].url}
+                            alt="Photo 2"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <BridgeSceneSvg />
                         )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                          <Upload className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
+
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                            {t("photoSlot2")}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef2.current?.click()}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-bg-card hover:bg-accent hover:text-white border border-border hover:border-accent rounded-lg text-[10px] font-bold text-text-secondary transition-all cursor-pointer shadow-2xs"
+                            >
+                              <Upload className="w-2.5 h-2.5" />
+                              <span>{storyPhotos[1].url ? t("changePhoto") : t("uploadPhoto")}</span>
+                            </button>
+                            {storyPhotos[1].url && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePhoto(1)}
+                                className="p-1 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+                                title={t("removePhoto")}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         <input
                           type="text"
                           value={storyPhotos[1].caption}
                           onChange={(e) => handleCaptionChange(1, e.target.value)}
                           placeholder={t("photoCaptionPlaceholder")}
-                          className="flex-1 px-2 py-1 bg-bg-base border border-border rounded-lg text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                          className="w-full px-2.5 py-1 bg-bg-base border border-border rounded-lg text-xs font-medium text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                         />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef2.current?.click()}
-                          className="px-2 py-1 bg-bg-surface border border-border hover:border-accent rounded-lg text-[10px] font-bold text-text-secondary hover:text-accent transition-colors flex-shrink-0 cursor-pointer"
-                        >
-                          {storyPhotos[1].url ? t("changePhoto") : t("uploadPhoto")}
-                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Instagram Story Card 9:16 Canvas with Two-Column Split Layout */}
-              <div className="flex justify-center p-3 sm:p-5 bg-black/40 rounded-3xl border border-border/80 overflow-hidden">
-                <div
-                  ref={storyCardRef}
-                  style={{ width: "360px", height: "640px" }}
-                  className={`relative rounded-2xl overflow-hidden p-4 flex flex-col justify-between shadow-2xl border select-none flex-shrink-0 transition-colors duration-200 ${
-                    isDark
-                      ? "bg-gradient-to-b from-[#141312] via-[#1a1918] to-[#11100f] text-[#FFFCF2] border-white/10"
-                      : "bg-[#FAF8F5] text-[#1E1D1B] border-black/10"
-                  }`}
-                >
-                  {/* Decorative Background Accents */}
+                {/* Instagram Story Card 9:16 Canvas with Two-Column Split Layout */}
+                <div className="flex justify-center p-3 sm:p-5 bg-black/40 rounded-3xl border border-border/80 overflow-hidden">
                   <div
-                    className={`absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
-                      isDark ? "bg-[#EB5E28]/20" : "bg-[#63B3ED]/25"
-                    }`}
-                  />
-                  <div
-                    className={`absolute -bottom-10 -left-10 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
-                      isDark ? "bg-rose-500/20" : "bg-[#ED8936]/15"
-                    }`}
-                  />
-
-                  {/* Japanese Character Watermark in Background */}
-                  <div className="absolute right-2 bottom-12 opacity-[0.035] pointer-events-none select-none text-[160px] font-serif leading-none font-bold">
-                    旅
-                  </div>
-
-                  {/* 1. Header Bar: Branding with Official Logo & Duration Badge */}
-                  <div className="relative z-10 flex-shrink-0 space-y-1.5 border-b border-black/[0.08] dark:border-white/10 pb-2">
-                    {/* Top Row: App Brand & Subtitle (Left) + Days Duration & Autumn Maple Leaf (Right) */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 rounded-md overflow-hidden bg-[#EB5E28]/10 p-0.5 flex items-center justify-center flex-shrink-0 shadow-2xs border border-[#EB5E28]/20">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src="/logo.png"
-                            alt="Logo"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <div
-                            className={`text-[9.5px] font-black tracking-wider uppercase truncate ${
-                              isDark ? "text-[#EB5E28]" : "text-[#1D3557]"
-                            }`}
-                          >
-                            {t("japanTripPlanner")}
-                          </div>
-                          <div
-                            className={`text-[7px] font-mono leading-none truncate ${
-                              isDark ? "text-[#CCC5B9]" : "text-[#7A746B]"
-                            }`}
-                          >
-                            {t("itineraryAndCostSummary")}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Days Pill + Autumn Maple Leaf */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div
-                          className={`px-2.5 py-0.5 rounded-full text-[8.5px] font-black tracking-wider shadow-xs ${
-                            isDark
-                              ? "bg-[#EB5E28] text-white"
-                              : "bg-[#1D3557] text-white"
-                          }`}
-                        >
-                          {t("daysCountBadge", { count: durationDays })}
-                        </div>
-                        <div className="text-[#E53E3E] opacity-90 flex-shrink-0">
-                          <AutumnMapleLeaf className="w-4 h-4 rotate-[18deg]" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Second Row: Trip Title & Date Range */}
-                    <div className="pt-0.5 space-y-1">
-                      <h2
-                        className={`text-[18px] font-black tracking-tight leading-tight line-clamp-1 ${
-                          isDark ? "text-[#FFFCF2]" : "text-[#1D3557]"
-                        }`}
-                        title={trip.title}
-                      >
-                        {trip.title}
-                      </h2>
-
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EB5E28]/15 text-[#EB5E28] text-[8px] font-extrabold uppercase tracking-wide">
-                        <Calendar className="w-2.5 h-2.5" />
-                        <span>
-                          {startStr} – {endStr}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2. Estimated Cost Section (4-Category Bar) */}
-                  <div
-                    className={`relative z-10 rounded-xl p-2 border my-1 flex-shrink-0 shadow-2xs ${
+                    ref={storyCardRef}
+                    style={{ width: "360px", height: "640px" }}
+                    className={`relative rounded-2xl overflow-hidden p-4 flex flex-col justify-between shadow-2xl border select-none flex-shrink-0 transition-colors duration-200 ${
                       isDark
-                        ? "bg-[#181716]/95 border-[#EB5E28]/35"
-                        : "bg-white/95 border-[#E7DFD4]"
+                        ? "bg-gradient-to-b from-[#141312] via-[#1a1918] to-[#11100f] text-[#FFFCF2] border-white/10"
+                        : "bg-[#FAF8F5] text-[#1E1D1B] border-black/10"
                     }`}
                   >
-                    <div className="flex items-center justify-between pb-1 border-b border-black/[0.06] dark:border-white/[0.06]">
-                      <span
-                        className={`text-[8.5px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${
-                          isDark ? "text-[#EB5E28]" : "text-[#D44A15]"
-                        }`}
-                      >
-                        <Coins className="w-2.5 h-2.5" />
-                        <span>{t("estimatedCost")}</span>
-                      </span>
-                      <div className="text-right">
-                        <span
-                          className={`text-[11px] font-black font-mono ${
-                            isDark ? "text-[#FFFCF2]" : "text-[#1E1D1B]"
-                          }`}
-                        >
-                          {totalTripEstimatedThb > 0
-                            ? formatTHB(totalTripEstimatedThb)
-                            : "—"}
-                        </span>
-                        {totalTripEstimatedJpy > 0 && (
-                          <span
-                            className={`text-[8px] font-mono ml-1 ${
-                              isDark ? "text-[#CCC5B9]" : "text-[#7A746B]"
-                            }`}
-                          >
-                            (≈ {formatJPY(totalTripEstimatedJpy)})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 4-Category Price Grid */}
-                    <div className="grid grid-cols-4 gap-1 pt-1 text-[7.5px] font-mono">
-                      <div
-                        className={`px-1 py-0.5 rounded text-center truncate ${
-                          isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
-                        }`}
-                      >
-                        <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
-                          ✈️ {t("storyFlight")}
-                        </div>
-                        <div className="font-extrabold text-[8px] mt-0.5 truncate">
-                          {flightThb > 0 ? formatTHB(flightThb) : "—"}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`px-1 py-0.5 rounded text-center truncate ${
-                          isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
-                        }`}
-                      >
-                        <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
-                          🏨 {t("storyHotel")}
-                        </div>
-                        <div className="font-extrabold text-[8px] mt-0.5 truncate">
-                          {hotelThb > 0 ? formatTHB(hotelThb) : hotelJpy > 0 ? formatJPY(hotelJpy) : "—"}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`px-1 py-0.5 rounded text-center truncate ${
-                          isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
-                        }`}
-                      >
-                        <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
-                          🎟️ {t("storyPass")}
-                        </div>
-                        <div className="font-extrabold text-[8px] mt-0.5 truncate">
-                          {passJpy > 0 ? formatJPY(passJpy) : "—"}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`px-1 py-0.5 rounded text-center truncate ${
-                          isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
-                        }`}
-                      >
-                        <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
-                          🍜 {t("storyEveryday")}
-                        </div>
-                        <div className="font-extrabold text-[8px] mt-0.5 truncate">
-                          {activitiesJpy > 0 ? formatJPY(activitiesJpy) : "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 3. TWO-COLUMN MAIN BODY (Left: Max 2 Photos | Right: Daily Route Timeline) */}
-                  <div className="relative z-10 flex-1 flex gap-2.5 min-h-0 my-1 overflow-hidden">
-                    {/* LEFT COLUMN: Max 2 Photos & Japanese Scrapbook Aesthetic */}
-                    <div className="w-[136px] flex flex-col justify-between flex-shrink-0 min-h-0 py-0.5">
-                      {/* Photo 1 (Top Polaroid) */}
-                      <div
-                        onClick={() => fileInputRef1.current?.click()}
-                        className="relative group cursor-pointer transition-transform hover:scale-[1.02]"
-                        title={t("uploadPhoto")}
-                      >
-                        {/* Washi Tape */}
-                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-9 h-3 bg-white/75 dark:bg-white/30 backdrop-blur-xs border border-white/80 dark:border-white/40 shadow-2xs rotate-[-3deg] z-20 pointer-events-none rounded-2xs" />
-
-                        {/* Polaroid Frame */}
-                        <div
-                          className={`p-1.5 pb-4 rounded-sm shadow-md border rotate-[-2deg] transition-all ${
-                            isDark
-                              ? "bg-[#201E1D] border-white/10"
-                              : "bg-white border-black/[0.06]"
-                          }`}
-                        >
-                          <div className="w-full aspect-[4/3] rounded-2xs overflow-hidden relative bg-slate-100 dark:bg-black/40">
-                            {storyPhotos[0].url ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={storyPhotos[0].url}
-                                alt={storyPhotos[0].caption || "Photo 1"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <CastleSceneSvg />
-                            )}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-1">
-                              <Camera className="w-3 h-3" />
-                            </div>
-                          </div>
-
-                          <div
-                            className={`text-center font-bold text-[8.5px] mt-1 tracking-wider truncate px-1 ${
-                              isDark ? "text-amber-100" : "text-[#1D3557]"
-                            }`}
-                          >
-                            ~ {storyPhotos[0].caption || "Hirosaki"} ~
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Photo 2 (Bottom Polaroid) */}
-                      <div
-                        onClick={() => fileInputRef2.current?.click()}
-                        className="relative group cursor-pointer transition-transform hover:scale-[1.02]"
-                        title={t("uploadPhoto")}
-                      >
-                        {/* Washi Tape */}
-                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-9 h-3 bg-white/75 dark:bg-white/30 backdrop-blur-xs border border-white/80 dark:border-white/40 shadow-2xs rotate-[4deg] z-20 pointer-events-none rounded-2xs" />
-
-                        {/* Polaroid Frame */}
-                        <div
-                          className={`p-1.5 pb-4 rounded-sm shadow-md border rotate-[2deg] transition-all ${
-                            isDark
-                              ? "bg-[#201E1D] border-white/10"
-                              : "bg-white border-black/[0.06]"
-                          }`}
-                        >
-                          <div className="w-full aspect-[4/3] rounded-2xs overflow-hidden relative bg-slate-100 dark:bg-black/40">
-                            {storyPhotos[1].url ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={storyPhotos[1].url}
-                                alt={storyPhotos[1].caption || "Photo 2"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <BridgeSceneSvg />
-                            )}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-1">
-                              <Camera className="w-3 h-3" />
-                            </div>
-                          </div>
-
-                          <div
-                            className={`text-center font-bold text-[8.5px] mt-1 tracking-wider truncate px-1 ${
-                              isDark ? "text-amber-100" : "text-[#1D3557]"
-                            }`}
-                          >
-                            ~ {storyPhotos[1].caption || "Aomori"} ~
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bottom Japanese Quote & Autumn Leaves Accent */}
-                      <div className="pt-1 flex items-end justify-between flex-shrink-0">
-                        <div>
-                          <div
-                            className={`font-serif font-black text-[9.5px] leading-tight tracking-widest ${
-                              isDark ? "text-amber-100/90" : "text-[#1D3557]"
-                            }`}
-                          >
-                            また、
-                          </div>
-                          <div
-                            className={`font-serif font-black text-[9.5px] leading-tight tracking-widest pl-2 ${
-                              isDark ? "text-amber-100/90" : "text-[#1D3557]"
-                            }`}
-                          >
-                            日本の旅を。
-                          </div>
-                          <div
-                            className={`text-[6.5px] font-mono tracking-tight mt-0.5 ${
-                              isDark ? "text-[#CCC5B9]/70" : "text-[#7A746B]"
-                            }`}
-                          >
-                            {t("memoriesOfJapan")}
-                          </div>
-                        </div>
-
-                        {/* Autumn Leaves in corner */}
-                        <div className="text-[#DD6B20] opacity-80 pb-0.5">
-                          <AutumnMapleLeaf className="w-4 h-4 rotate-[-15deg]" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT COLUMN: Daily Route Vertical Timeline */}
-                    <div className="flex-1 flex flex-col min-w-0 min-h-0 py-0.5">
-                      {/* Section Title */}
-                      <div className="flex items-center justify-between pb-1 flex-shrink-0">
-                        <div className="flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider text-[#1D3557] dark:text-[#EB5E28]">
-                          <MapPin className="w-2.5 h-2.5 text-[#EB5E28]" />
-                          <span>{t("dailyRouteCount", { count: trip.days.length })}</span>
-                        </div>
-                        <Sparkles className="w-2.5 h-2.5 text-[#EB5E28]" />
-                      </div>
-
-                      {/* Vertical Connected Timeline List */}
-                      <div className="relative flex-1 flex flex-col justify-between min-h-0 py-0.5">
-                        {/* Connected Timeline Line */}
-                        <div className="absolute left-[6.5px] top-2 bottom-2 w-[1.5px] bg-[#EB5E28]/30 pointer-events-none" />
-
-                        {trip.days.map((d) => {
-                          const dayCost =
-                            d.dayCostJpy ??
-                            d.activities?.reduce((s, a) => s + (a.cost || 0), 0) ??
-                            0;
-
-                          return (
-                            <div
-                              key={d.id}
-                              className="relative flex items-center gap-1.5 min-h-0 w-full group"
-                            >
-                              {/* Orange Node Dot on Timeline */}
-                              <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-[#1E1C1A] border-2 border-[#EB5E28] flex items-center justify-center flex-shrink-0 z-10 shadow-2xs">
-                                <div className="w-1.5 h-1.5 rounded-full bg-[#EB5E28]" />
-                              </div>
-
-                              {/* Day Card */}
-                              <div
-                                className={`flex-1 rounded-xl border flex flex-col justify-between min-w-0 transition-all ${
-                                  trip.days.length <= 5
-                                    ? "p-2"
-                                    : trip.days.length <= 7
-                                    ? "p-1.5"
-                                    : "p-1"
-                                } ${
-                                  isDark
-                                    ? "bg-white/[0.05] border-white/10 hover:bg-white/[0.08]"
-                                    : "bg-white/95 border-black/[0.06] shadow-2xs hover:shadow-xs"
-                                }`}
-                              >
-                                {/* Line 1: Day Badge + Cost */}
-                                <div className="flex items-center justify-between gap-1 w-full flex-shrink-0">
-                                  <span className="px-1.5 py-0.5 rounded-md bg-[#EB5E28]/15 text-[#EB5E28] font-black text-[7px] tracking-wide flex-shrink-0">
-                                    {t("dayCountBadge", { count: d.dayNumber })}
-                                  </span>
-                                  <span
-                                    className={`font-mono font-black text-[7.5px] tracking-tight flex-shrink-0 ${
-                                      isDark ? "text-amber-200" : "text-[#D44A15]"
-                                    }`}
-                                  >
-                                    {formatJPY(dayCost)}
-                                  </span>
-                                </div>
-
-                                {/* Line 2: Destination Name / Title */}
-                                <div
-                                  className={`font-bold truncate mt-0.5 leading-tight ${
-                                    trip.days.length <= 6
-                                      ? "text-[8px]"
-                                      : "text-[7.5px]"
-                                  } ${
-                                    isDark ? "text-[#FFFCF2]" : "text-[#1E1D1B]"
-                                  }`}
-                                  title={d.title}
-                                >
-                                  {d.title}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. Clean Footer Brand Stamp */}
-                  <div
-                    className={`relative z-10 pt-1.5 border-t flex items-center justify-between text-[7.5px] font-mono flex-shrink-0 ${
-                      isDark
-                        ? "border-white/10 text-[#A8A29E]"
-                        : "border-black/10 text-[#7A746B]"
-                    }`}
-                  >
-                    <span className="font-bold text-[#EB5E28]">🚄 日本旅行</span>
-                    <div className="font-bold tracking-wider">
-                      MARK NO NIHON TABI
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "link" && (
-            <div className="space-y-6">
-              {/* Trip Visibility Settings (Owner only) */}
-              <div className="p-4 rounded-2xl bg-bg-surface border border-border space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {isPublic ? (
-                      <Globe className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <Lock className="w-4 h-4 text-amber-500" />
-                    )}
-                    <span className="text-xs font-bold text-text-primary">
-                      {t("tripVisibility")}
-                    </span>
-                  </div>
-
-                  {isOwner && (
-                    <div className="flex items-center bg-bg-base p-1 rounded-xl border border-border">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVisibility(true)}
-                        disabled={updatingVisibility}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                          isPublic
-                            ? "bg-emerald-600 text-white shadow-xs"
-                            : "text-text-muted hover:text-text-primary"
-                        }`}
-                      >
-                        {t("publicTrip")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleVisibility(false)}
-                        disabled={updatingVisibility}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                          !isPublic
-                            ? "bg-amber-600 text-white shadow-xs"
-                            : "text-text-muted hover:text-text-primary"
-                        }`}
-                      >
-                        {t("privateTrip")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <p className="text-xs text-text-muted">
-                  {isPublic ? t("publicDesc") : t("privateDesc")}
-                </p>
-              </div>
-
-              {/* Shareable Link Box */}
-              {isPublic ? (
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-text-primary block">
-                    {t("copyLink")}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={shareUrl}
-                      className="flex-1 px-3.5 py-2.5 bg-bg-surface border border-border rounded-xl text-xs font-mono text-text-secondary select-all focus:outline-none"
+                    {/* Decorative Background Accents */}
+                    <div
+                      className={`absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
+                        isDark ? "bg-[#EB5E28]/20" : "bg-[#63B3ED]/25"
+                      }`}
                     />
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                        copiedLink
-                          ? "bg-emerald-600 text-white"
-                          : "bg-accent hover:bg-accent-hover text-white"
+                    <div
+                      className={`absolute -bottom-10 -left-10 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
+                        isDark ? "bg-rose-500/20" : "bg-[#ED8936]/15"
+                      }`}
+                    />
+
+                    {/* Japanese Character Watermark in Background */}
+                    <div className="absolute right-2 bottom-12 opacity-[0.035] pointer-events-none select-none text-[160px] font-serif leading-none font-bold">
+                      旅
+                    </div>
+
+                    {/* 1. Header Bar: Branding with Official Logo & Duration Badge */}
+                    <div className="relative z-10 flex-shrink-0 space-y-1.5 border-b border-black/[0.08] dark:border-white/10 pb-2">
+                      {/* Top Row: App Brand & Subtitle (Left) + Days Duration & Autumn Maple Leaf (Right) */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6 h-6 rounded-md overflow-hidden bg-[#EB5E28]/10 p-0.5 flex items-center justify-center flex-shrink-0 shadow-2xs border border-[#EB5E28]/20">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src="/logo.png"
+                              alt="Logo"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div
+                              className={`text-[9.5px] font-black tracking-wider uppercase truncate ${
+                                isDark ? "text-[#EB5E28]" : "text-[#1D3557]"
+                              }`}
+                            >
+                              {t("japanTripPlanner")}
+                            </div>
+                            <div
+                              className={`text-[7px] font-mono leading-none truncate ${
+                                isDark ? "text-[#CCC5B9]" : "text-[#7A746B]"
+                              }`}
+                            >
+                              {t("itineraryAndCostSummary")}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Days Pill + Autumn Maple Leaf */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <div
+                            className={`px-2.5 py-0.5 rounded-full text-[8.5px] font-black tracking-wider shadow-xs ${
+                              isDark
+                                ? "bg-[#EB5E28] text-white"
+                                : "bg-[#1D3557] text-white"
+                            }`}
+                          >
+                            {t("daysCountBadge", { count: durationDays })}
+                          </div>
+                          <div className="text-[#E53E3E] opacity-90 flex-shrink-0">
+                            <AutumnMapleLeaf className="w-4 h-4 rotate-[18deg]" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Second Row: Trip Title & Date Range */}
+                      <div className="pt-0.5 space-y-1">
+                        <h2
+                          className={`text-[18px] font-black tracking-tight leading-tight line-clamp-1 ${
+                            isDark ? "text-[#FFFCF2]" : "text-[#1D3557]"
+                          }`}
+                          title={trip.title}
+                        >
+                          {trip.title}
+                        </h2>
+
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EB5E28]/15 text-[#EB5E28] text-[8px] font-extrabold uppercase tracking-wide">
+                          <Calendar className="w-2.5 h-2.5" />
+                          <span>
+                            {startStr} – {endStr}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Estimated Cost Section (4-Category Bar) */}
+                    <div
+                      className={`relative z-10 rounded-xl p-2 border my-1 flex-shrink-0 shadow-2xs ${
+                        isDark
+                          ? "bg-[#181716]/95 border-[#EB5E28]/35"
+                          : "bg-white/95 border-[#E7DFD4]"
                       }`}
                     >
-                      {copiedLink ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{t("linkCopied")}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>{t("copyLink")}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                      <div className="flex items-center justify-between pb-1 border-b border-black/[0.06] dark:border-white/[0.06]">
+                        <span
+                          className={`text-[8.5px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${
+                            isDark ? "text-[#EB5E28]" : "text-[#D44A15]"
+                          }`}
+                        >
+                          <Coins className="w-2.5 h-2.5" />
+                          <span>{t("estimatedCost")}</span>
+                        </span>
+                        <div className="text-right">
+                          <span
+                            className={`text-[11px] font-black font-mono ${
+                              isDark ? "text-[#FFFCF2]" : "text-[#1E1D1B]"
+                            }`}
+                          >
+                            {totalTripEstimatedThb > 0
+                              ? formatTHB(totalTripEstimatedThb)
+                              : "—"}
+                          </span>
+                          {totalTripEstimatedJpy > 0 && (
+                            <span
+                              className={`text-[8px] font-mono ml-1 ${
+                                isDark ? "text-[#CCC5B9]" : "text-[#7A746B]"
+                              }`}
+                            >
+                              (≈ {formatJPY(totalTripEstimatedJpy)})
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                  {/* Native Device Share */}
-                  {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
-                    <button
-                      type="button"
-                      onClick={handleWebShare}
-                      className="w-full py-2.5 rounded-xl border border-border bg-bg-surface hover:bg-bg-elevated text-xs font-bold text-text-primary transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                      {/* 4-Category Price Grid */}
+                      <div className="grid grid-cols-4 gap-1 pt-1 text-[7.5px] font-mono">
+                        <div
+                          className={`px-1 py-0.5 rounded text-center truncate ${
+                            isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
+                          }`}
+                        >
+                          <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
+                            ✈️ {t("storyFlight")}
+                          </div>
+                          <div className="font-extrabold text-[8px] mt-0.5 truncate">
+                            {flightThb > 0 ? formatTHB(flightThb) : "—"}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`px-1 py-0.5 rounded text-center truncate ${
+                            isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
+                          }`}
+                        >
+                          <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
+                            🏨 {t("storyHotel")}
+                          </div>
+                          <div className="font-extrabold text-[8px] mt-0.5 truncate">
+                            {hotelThb > 0 ? formatTHB(hotelThb) : hotelJpy > 0 ? formatJPY(hotelJpy) : "—"}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`px-1 py-0.5 rounded text-center truncate ${
+                            isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
+                          }`}
+                        >
+                          <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
+                            🎟️ {t("storyPass")}
+                          </div>
+                          <div className="font-extrabold text-[8px] mt-0.5 truncate">
+                            {passJpy > 0 ? formatJPY(passJpy) : "—"}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`px-1 py-0.5 rounded text-center truncate ${
+                            isDark ? "bg-white/[0.04] text-[#CCC5B9]" : "bg-[#F9F7F2] text-[#444]"
+                          }`}
+                        >
+                          <div className="text-[7px] uppercase font-bold text-[#EB5E28] truncate">
+                            🍜 {t("storyEveryday")}
+                          </div>
+                          <div className="font-extrabold text-[8px] mt-0.5 truncate">
+                            {activitiesJpy > 0 ? formatJPY(activitiesJpy) : "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. TWO-COLUMN MAIN BODY (Left: Max 2 Photos | Right: Daily Route Timeline) */}
+                    <div className="relative z-10 flex-1 flex gap-2.5 min-h-0 my-1 overflow-hidden">
+                      {/* LEFT COLUMN: Max 2 Photos & Japanese Scrapbook Aesthetic */}
+                      <div className="w-[136px] flex flex-col justify-between flex-shrink-0 min-h-0 py-0.5">
+                        {/* Photo 1 (Top Polaroid) */}
+                        <div
+                          onClick={() => fileInputRef1.current?.click()}
+                          className="relative group cursor-pointer transition-transform hover:scale-[1.02]"
+                          title={t("uploadPhoto")}
+                        >
+                          {/* Washi Tape */}
+                          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-9 h-3 bg-white/75 dark:bg-white/30 backdrop-blur-xs border border-white/80 dark:border-white/40 shadow-2xs rotate-[-3deg] z-20 pointer-events-none rounded-2xs" />
+
+                          {/* Polaroid Frame */}
+                          <div
+                            className={`p-1.5 pb-4 rounded-sm shadow-md border rotate-[-2deg] transition-all ${
+                              isDark
+                                ? "bg-[#201E1D] border-white/10"
+                                : "bg-white border-black/[0.06]"
+                            }`}
+                          >
+                            <div className="w-full aspect-[4/3] rounded-2xs overflow-hidden relative bg-slate-100 dark:bg-black/40">
+                              {storyPhotos[0].url ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={storyPhotos[0].url}
+                                  alt={storyPhotos[0].caption || "Photo 1"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <CastleSceneSvg />
+                              )}
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-1">
+                                <Camera className="w-3 h-3" />
+                              </div>
+                            </div>
+
+                            <div
+                              className={`text-center font-bold text-[8.5px] mt-1 tracking-wider truncate px-1 ${
+                                isDark ? "text-amber-100" : "text-[#1D3557]"
+                              }`}
+                            >
+                              ~ {storyPhotos[0].caption || "Hirosaki"} ~
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Photo 2 (Bottom Polaroid) */}
+                        <div
+                          onClick={() => fileInputRef2.current?.click()}
+                          className="relative group cursor-pointer transition-transform hover:scale-[1.02]"
+                          title={t("uploadPhoto")}
+                        >
+                          {/* Washi Tape */}
+                          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-9 h-3 bg-white/75 dark:bg-white/30 backdrop-blur-xs border border-white/80 dark:border-white/40 shadow-2xs rotate-[4deg] z-20 pointer-events-none rounded-2xs" />
+
+                          {/* Polaroid Frame */}
+                          <div
+                            className={`p-1.5 pb-4 rounded-sm shadow-md border rotate-[2deg] transition-all ${
+                              isDark
+                                ? "bg-[#201E1D] border-white/10"
+                                : "bg-white border-black/[0.06]"
+                            }`}
+                          >
+                            <div className="w-full aspect-[4/3] rounded-2xs overflow-hidden relative bg-slate-100 dark:bg-black/40">
+                              {storyPhotos[1].url ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={storyPhotos[1].url}
+                                  alt={storyPhotos[1].caption || "Photo 2"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <BridgeSceneSvg />
+                              )}
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[8px] font-bold gap-1">
+                                <Camera className="w-3 h-3" />
+                              </div>
+                            </div>
+
+                            <div
+                              className={`text-center font-bold text-[8.5px] mt-1 tracking-wider truncate px-1 ${
+                                isDark ? "text-amber-100" : "text-[#1D3557]"
+                              }`}
+                            >
+                              ~ {storyPhotos[1].caption || "Aomori"} ~
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Japanese Quote & Autumn Leaves Accent */}
+                        <div className="pt-1 flex items-end justify-between flex-shrink-0">
+                          <div>
+                            <div
+                              className={`font-serif font-black text-[9.5px] leading-tight tracking-widest ${
+                                isDark ? "text-amber-100/90" : "text-[#1D3557]"
+                              }`}
+                            >
+                              また、
+                            </div>
+                            <div
+                              className={`font-serif font-black text-[9.5px] leading-tight tracking-widest pl-2 ${
+                                isDark ? "text-amber-100/90" : "text-[#1D3557]"
+                              }`}
+                            >
+                              日本の旅を。
+                            </div>
+                            <div
+                              className={`text-[6.5px] font-mono tracking-tight mt-0.5 ${
+                                isDark ? "text-[#CCC5B9]/70" : "text-[#7A746B]"
+                              }`}
+                            >
+                              {t("memoriesOfJapan")}
+                            </div>
+                          </div>
+
+                          {/* Autumn Leaves in corner */}
+                          <div className="text-[#DD6B20] opacity-80 pb-0.5">
+                            <AutumnMapleLeaf className="w-4 h-4 rotate-[-15deg]" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* RIGHT COLUMN: Daily Route Vertical Timeline */}
+                      <div className="flex-1 flex flex-col min-w-0 min-h-0 py-0.5">
+                        {/* Section Title */}
+                        <div className="flex items-center justify-between pb-1 flex-shrink-0">
+                          <div className="flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider text-[#1D3557] dark:text-[#EB5E28]">
+                            <MapPin className="w-2.5 h-2.5 text-[#EB5E28]" />
+                            <span>{t("dailyRouteCount", { count: trip.days.length })}</span>
+                          </div>
+                          <Sparkles className="w-2.5 h-2.5 text-[#EB5E28]" />
+                        </div>
+
+                        {/* Vertical Connected Timeline List */}
+                        <div className="relative flex-1 flex flex-col justify-between min-h-0 py-0.5">
+                          {/* Connected Timeline Line */}
+                          <div className="absolute left-[6.5px] top-2 bottom-2 w-[1.5px] bg-[#EB5E28]/30 pointer-events-none" />
+
+                          {trip.days.map((d) => {
+                            const dayCost =
+                              d.dayCostJpy ??
+                              d.activities?.reduce((s, a) => s + (a.cost || 0), 0) ??
+                              0;
+
+                            return (
+                              <div
+                                key={d.id}
+                                className="relative flex items-center gap-1.5 min-h-0 w-full group"
+                              >
+                                {/* Orange Node Dot on Timeline */}
+                                <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-[#1E1C1A] border-2 border-[#EB5E28] flex items-center justify-center flex-shrink-0 z-10 shadow-2xs">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#EB5E28]" />
+                                </div>
+
+                                {/* Day Card */}
+                                <div
+                                  className={`flex-1 rounded-xl border flex flex-col justify-between min-w-0 transition-all ${
+                                    trip.days.length <= 5
+                                      ? "p-2"
+                                      : trip.days.length <= 7
+                                      ? "p-1.5"
+                                      : "p-1"
+                                  } ${
+                                    isDark
+                                      ? "bg-white/[0.05] border-white/10 hover:bg-white/[0.08]"
+                                      : "bg-white/95 border-black/[0.06] shadow-2xs hover:shadow-xs"
+                                  }`}
+                                >
+                                  {/* Line 1: Day Badge + Cost */}
+                                  <div className="flex items-center justify-between gap-1 w-full flex-shrink-0">
+                                    <span className="px-1.5 py-0.5 rounded-md bg-[#EB5E28]/15 text-[#EB5E28] font-black text-[7px] tracking-wide flex-shrink-0">
+                                      {t("dayCountBadge", { count: d.dayNumber })}
+                                    </span>
+                                    <span
+                                      className={`font-mono font-black text-[7.5px] tracking-tight flex-shrink-0 ${
+                                        isDark ? "text-amber-200" : "text-[#D44A15]"
+                                      }`}
+                                    >
+                                      {formatJPY(dayCost)}
+                                    </span>
+                                  </div>
+
+                                  {/* Line 2: Destination Name / Title */}
+                                  <div
+                                    className={`font-bold truncate mt-0.5 leading-tight ${
+                                      trip.days.length <= 6
+                                        ? "text-[8px]"
+                                        : "text-[7.5px]"
+                                    } ${
+                                      isDark ? "text-[#FFFCF2]" : "text-[#1E1D1B]"
+                                    }`}
+                                    title={d.title}
+                                  >
+                                    {d.title}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Clean Footer Brand Stamp */}
+                    <div
+                      className={`relative z-10 pt-1.5 border-t flex items-center justify-between text-[7.5px] font-mono flex-shrink-0 ${
+                        isDark
+                          ? "border-white/10 text-[#A8A29E]"
+                          : "border-black/10 text-[#7A746B]"
+                      }`}
                     >
-                      <Send className="w-3.5 h-3.5 text-accent" />
-                      <span>{t("shareVia")}</span>
-                    </button>
-                  )}
+                      <span className="font-bold text-[#EB5E28]">🚄 日本旅行</span>
+                      <div className="font-bold tracking-wider">
+                        MARK NO NIHON TABI
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center text-xs text-amber-500 font-medium">
-                  {t("privateDesc")}
-                </div>
-              )}
-
-              {/* Copy Plain Text Summary */}
-              <div className="pt-2 border-t border-border">
-                <button
-                  type="button"
-                  onClick={handleCopySummaryText}
-                  className="w-full py-2.5 rounded-xl bg-bg-surface hover:bg-bg-elevated border border-border text-xs font-bold text-text-secondary hover:text-text-primary transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {copiedText ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-500">{t("summaryCopied")}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-accent" />
-                      <span>{t("copySummaryText")}</span>
-                    </>
-                  )}
-                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>,

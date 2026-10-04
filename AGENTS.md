@@ -110,24 +110,48 @@ japan-trip/
   - `parseHotelDates(hotel, trip)`: Extract valid check-in/out dates and night counts.
   - `formatHotelStay(hotel, language)`: Returns formatted stay string with nights count, using Thai Buddhist Era (พ.ศ. = AD + 543) for Thai and Gregorian year for English.
 
-### E. Instagram Story Generator ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx))
+### E. Instagram Story Generator & Share Modal ([ShareTripModal.tsx](./src/components/ShareTripModal.tsx))
+- **Consistent Modal Container**: Stays at standard `max-w-2xl` width without jarring size jumps.
+- **Single Unified View with Collapsible Rows (Default = Folded)**:
+  - Replaced the tab switcher (`[Instagram Story] [Share Link]`) with a single-tab view containing independent collapsible accordion rows that **default to folded/collapsed** (`linkExpanded: false`, `storyExpanded: false`) upon opening, keeping the modal neat and compact. Future sharing options can simply be added as new rows.
+  - **Row 1: Share via Link & Privacy (`linkExpanded`)**:
+    - Header: Globe/Lock icon, status badge, public URL / private label, and expand/collapse chevron toggle.
+    - Content: Clean single switch toggle (**On** = `Can share` / `แชร์ได้ (เปิด)`, **Off** = `Can't share` / `แชร์ไม่ได้ (ปิด)`), shareable link with one-click copy, and native device share button. Standard Tailwind `h-6 w-11` track + `h-5 w-5` thumb (`translate-x-5`) prevents knob overflow.
+  - **Row 2: Instagram Story (9:16) Generator (`storyExpanded`)**:
+    - Header: Instagram icon, 9:16 badge, theme switcher (`light`/`dark`), and expand/collapse chevron toggle.
+    - Content: Full 9:16 canvas preview, photo upload slot cards with stacked header buttons and full-width captions, and PNG download button.
 - **9:16 Canvas Layout**:
   - Balanced Top Bar: App brand & subtitle on the left; Duration badge (`{durationDays} DAYS` / `{durationDays} วัน`) and decorative maple leaf on the right (eliminating top-right void).
   - Main Title & Date: Full-width trip title with localized date pill (`startStr – endStr`).
   - Two-Column Body: Up to 2 user photos with captions on the left; vertical daily route timeline on the right with day badges and costs (sleek and minimal without misleading landmark icons).
-  - Full Bilingual Localization: Every label (brand, costs, chips, timeline, badges, footer) uses [src/lib/i18n.ts](./src/lib/i18n.ts) without inline language conditionals.
+  - Photo Upload Controls: Stacked slot cards with compact `Upload` / `Change` button and delete icon in the slot header, with full-width caption inputs underneath so buttons never overflow column borders.
+- **Full Bilingual Localization**: Every label (brand, costs, chips, timeline, badges, footer, privacy statuses, collapsible headers) uses [src/lib/i18n.ts](./src/lib/i18n.ts) without inline language conditionals.
 
 ### F. Export Itinerary & Print Configuration ([ExportItineraryView.tsx](./src/components/ExportItineraryView.tsx))
 - **Dedicated Loading Skeleton**: [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) used in `src/app/trips/[tripId]/export/loading.tsx` to match the A4 sheet format during transitions.
 - **Activity Remarks & URLs**: If an activity remark contains a URL, it is rendered as a clickable link (`🔗 {remark}`) without stripping URLs.
 - **Print Margins & Browser URL**: Preserves natural page margins for clean multi-page printouts. Browser URL and page numbers are removed by unchecking "Headers and footers" in the browser print dialog (guidance tip displayed on floating toolbar).
 
-### G. Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx))
-- **Two-Column Priority Structure**:
-  - **Column 1 (Left - Priority/Main KPI)**: `Grand Total Estimated` occupies `lg:col-span-4` with prominent accent styling, wallet icon, large bold THB total, JPY approx, and `fixedPlusDaily` ("Fixed + All Daily Budgets") subtitle.
-  - **Column 2 (Right - Sub-categories Row)**: The 4 breakdown components (`Flights`, `Hotels`, `Passes, Tickets & Rentals`, `Total Cost Everyday`) are placed in `lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4` as a neat horizontal row across from Grand Total.
-  - **Spend Progress Bars & Percentage Badges**: Each of the 4 sub-category cards features a proportional spend progress bar and percentage pill (`%` of `totalTripEstimatedThb`) matching the visual design in `DayTimeline.tsx` (compact font-mono percentage badge + gradient progress bar).
-- **Matched Loading Skeleton**: [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) exactly mirrors the 2-column layout including shimmer placeholders for the progress bars to guarantee zero layout shift on route transitions.
+### G. Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx) & [TripOverviewClient.tsx](./src/components/TripOverviewClient.tsx))
+- **Two-Column 40% / 60% Single-Row Financial Structure**:
+  - **Column 1 (Left 40% / `lg:w-2/5`)**: `Grand Total Estimated` occupies 40% width on desktop. Features warm peach styling (`bg-[#FFF9F5] border-2 border-accent`), wallet icon badge, `t("tripAndPocketBudget")` subtitle, bold font-mono THB total, JPY approx, and a fully rendered 6-bar vertical sparkline chart with explicit pixel heights.
+  - **Column 2 (Right 60% / `lg:w-3/5`)**: `Flights` (emerald/mint), `Hotels` (amber), `Passes, Tickets & Rentals` (indigo), and `Total Cost Everyday` (rose) are placed on the **same single row** (`grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2`) taking 60% of the row, each featuring a category icon, dual-currency amounts, spend percentage pill, and progress bar.
+  - Matches the height of Grand Total with zero awkward empty vertical void. Expand/collapse toggle removed for a permanent clean side-by-side presentation.
+- **Trip Overview & Trips List Polishing**:
+  - **Authentic Japanese Landscape Artwork with 4 Seasonal Variants & Logo Placement**: In the All Trips list page ([TripsListClient.tsx](./src/components/TripsListClient.tsx)), the user's logo (`/logo.png`) is presented strictly inside the main hero banner alongside the title and subtitle ("All Japan Trips — Plan, organize, and track your Japan adventures..."). On individual trip cards, the logo is removed from the header, while `JapanHeroArtwork` ([JapanHeroArtwork.tsx](./src/components/JapanHeroArtwork.tsx)) is rendered as an enlarged transparent landscape background (`w-72 sm:w-96 md:w-[420px]`, `h-48 sm:h-64`, `opacity-30` to `opacity-45`) positioned prominently across the upper-right card body (`top-2 sm:top-0 -right-4`) so Mt. Fuji, the rising sun, torii gate, and pagoda rise completely above the hotel and cost cards without being obscured. Automatically dynamically switches between 4 authentic, highly distinct seasonal styles based on the trip's start month:
+    - **❄️ Winter (Dec–Feb)**: Deep snowpack reaching halfway down Mt. Fuji, silver-blue winter sun, snowbanks across the foothills, snow accumulation blankets on the Torii roof and all 5 Pagoda eaves, snow-dusted Japanese pine trees (*Matsu*), and intricate floating snowflakes (*Yuki no Kessho*). Classic Tokaido blue Shinkansen stripe.
+    - **🌸 Spring (Mar–May)**: Soft Sakura coral-pink sunrise, indigo Mt. Fuji with morning glow, blossoming pink foothills with extra sakura knoll, an elegant arching cherry blossom branch with detailed flowers and buds in the corner, and swirling Sakura petals. Akita/Tohoku Komachi pink Shinkansen stripe.
+    - **☀️ Summer / Hot (Jun–Aug)**: Blazing golden sun with radiant flaring sunbeams, lush deep summer green-indigo Mt. Fuji with light summer snow crevasses, vibrant emerald green foothills, Japanese bamboo stalk grove (*Take*) on the left, and dancing golden sunlight sparkles/fireflies. Hayabusa emerald green Shinkansen stripe.
+    - **🍁 Autumn (Sep–Nov)**: Crimson sunset red harvest sun, golden ochre foothills, crisp first snowcap (*Hatsuyukikesho*), overhanging Momiji maple branch with fiery foliage, and dancing autumn leaves. E7 Hokuriku gold Shinkansen stripe.
+  - Uses dynamic SVG gradient `idPrefix` to ensure crisp rendering across multiple concurrent cards. Location string pills removed for a clean date and duration badge presentation.
+  - **Responsive Hero Banner Action Controls**: On desktop (`sm:`), hosts clean icon action buttons (`Share2`, `Edit3`, `Trash2`). On mobile screens, automatically collapses into a single sleek kebab button (`MoreVertical`) with a dropdown menu and adds right padding to the title (`pr-12 sm:pr-0`), preventing action buttons from covering or obscuring the trip name on smaller mobile devices.
+  - **3-Column Budget Allocations**: [BudgetBreakdown.tsx](./src/components/BudgetBreakdown.tsx) organizes wallets in a balanced 3-column grid (`grid-cols-1 md:grid-cols-3 gap-4`) without chevron arrows, with the `Edit Budget` button positioned neatly at the top-right of the card header alongside a refined `Total Pocket Budget` pill badge.
+  - **Top-Right Header Action Buttons & Section Badges**: Primary action buttons across dashboard sections (`Edit Budget` in BudgetBreakdown, `+ Add Hotel` in HotelTable, `+ Add Pass` and `+ Add Flight` in PassCard) are consistently aligned to the top-right corner of their respective section or card headers for clean visual balance. `+ Add Pass / Rental / Ticket` is simplified to `Add Pass` (`เพิ่มพาส/ตั๋ว`). `Total Hotel` and `Total Pocket Budget` display within sleek, enclosed header pills.
+  - **DayCard Refinement**: Structured 2-column cost box inside each day card displaying `IC Card` (green) and `Cash & Cards` (amber) side-by-side with localized labels, total day cost, and `t("viewTimeline")` action.
+  - **Clean Section Headers & Two-Tier Trip Lists**: The `/trips` list displays both **Incoming Plans** (`ทริปที่กำลังจะมาถึง`) and **Previous Plans** (`ทริปที่ผ่านมาแล้ว`). When no trips exist in a category, a dashed empty card displays (`t("noPreviousTrips")` / `ยังไม่มีประวัติทริปที่ผ่านมา`), ensuring the page layout is structured, balanced, and consistent with loading skeletons.
+- **Matched Loading Skeletons**:
+  - [TripOverviewSkeleton.tsx](./src/components/skeletons/TripOverviewSkeleton.tsx) mirrors the 40/60 layout (left 40% Grand Total + right 60% single-row 4 sub-cards) and DayCard 2-column cost box with shimmer placeholders to guarantee zero layout shift.
+  - [TripListSkeleton.tsx](./src/components/skeletons/TripListSkeleton.tsx) mirrors the full All Trips list page, including the hero banner, Incoming Plans section (2 cards with cost breakdown and action footer), and Previous Plans section to eliminate awkward empty space on initial page load.
 
 ### H. Day Itinerary Swapping ([SwapDayModal.tsx](./src/components/SwapDayModal.tsx) & `swapTripDays` in [src/lib/actions.ts](./src/lib/actions.ts))
 - **Calendar-Safe Swapping**: Allows users to exchange itineraries and activities between any two days (e.g. Day 2 and Day 3) while keeping calendar dates and day numbers strictly sequential.
