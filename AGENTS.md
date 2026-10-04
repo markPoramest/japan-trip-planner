@@ -196,12 +196,15 @@ japan-trip/
   - Zero browser `alert()` or `window.confirm()` dialogs: clearing all stops uses a dedicated in-app confirmation dialog, and server save errors render an inline dismissible error banner.
 - **Chronological Time Auto-sorting on Save**: Stops are automatically sorted chronologically by scheduled time upon saving (e.g. a stop at 18:00 moves before a stop at 18:30) with stable tie-breaking for identical times in `saveActivitiesBatch`, `createActivitiesBatch`, `createActivity`, and `updateActivity`.
 
-### L. Dual-Currency Pass Synchronization & Modal UI ([PassModal.tsx](./src/components/PassModal.tsx) & [PassCard.tsx](./src/components/PassCard.tsx))
-- **Unified Single-Row Price & Currency UI**: In `PassModal.tsx`, the Price (Amount) input and Currency selector dropdown (`JPY` / `THB`) are placed side-by-side on the **exact same row** (`flex items-center gap-2`), with live dual-currency conversion (`Equivalent to: ¥ X ≈ ฿ Y`) directly underneath. Validity Days and Booking Reference / Notes follow below in a clean 2-column grid.
-- **Synchronized Currency Persistence**: When creating (`createPass`) or editing (`updatePass`) a transit pass in `PassModal`, both `costJpy` and `costThb` are computed using `exchangeRate` and persisted to the database together, preventing stale or un-updated dual-currency values.
-- **Dynamic Currency Switch Conversion**: When users toggle between `JPY` and `THB` inside `PassModal`, the input amount automatically recalculates to the equivalent value (`Math.round(amount * rate)` or `Math.round(amount / rate)`).
-- **1:1 Legacy Mismatch Safeguard**: `PassCard.tsx` dynamically guards against stale 1:1 data (where `costThb === costJpy`) by deriving THB via `passJpy * rate`.
-- **Translation Keys**: `manageStops`, `timeRange`, `batchModalSubtitle`, `clearAllStops`, `confirmClearAllStops`, `fieldRequired`, `viewBreakdown` in [src/lib/i18n.ts](./src/lib/i18n.ts).
+### L. Reusable Currency & Cost Input Component ([CurrencyCostInput.tsx](./src/components/CurrencyCostInput.tsx))
+- **Standardized UI Across All Modals**: `CurrencyCostInput` is the unified component for entering prices/costs across all modals ([HotelModal.tsx](./src/components/HotelModal.tsx), [FlightModal.tsx](./src/components/FlightModal.tsx), [PassModal.tsx](./src/components/PassModal.tsx), and [ActivityFormModal.tsx](./src/components/ActivityFormModal.tsx)).
+- **Unified Layout**:
+  - Top header row: Label (with optional icon) on the left, Currency dropdown selector (`THB` / `JPY`) on the right.
+  - Middle row: Full-width bold font-mono number input.
+  - Bottom row: Live dual-currency equivalence preview (`Equivalent to: ¥ X ≈ ฿ Y`) when `amount > 0`.
+  - Children slot: For modal-specific add-ons (such as the IC card checkbox in `ActivityFormModal`).
+- **Dynamic Conversion on Switch**: Toggling between `JPY` and `THB` dynamically recalculates the input amount via `exchangeRate`.
+- **Pass Dual-Currency Persistence**: When creating or updating a pass in `PassModal`, both `costJpy` and `costThb` are stored in sync using `exchangeRate`. `PassCard.tsx` guards against legacy 1:1 data mismatch.
 
 ### M. Revamped Day Cost Stats Banner & Financial Breakdown ([DayTimeline.tsx](./src/components/DayTimeline.tsx))
 - **Horizontal Landscape Card Layout**:

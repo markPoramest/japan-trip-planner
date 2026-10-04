@@ -11,6 +11,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
 import { fuzzyMatch, getMatchedSegments } from "@/lib/fuzzy";
+import CurrencyCostInput from "@/components/CurrencyCostInput";
 
 interface ActivityModalProps {
   isOpen: boolean;
@@ -557,48 +558,15 @@ export default function ActivityFormModal({
           </div>
 
           {/* Currency selection & Cost input */}
-          <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                {t("currencyAndCost")}
-              </label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={inputCurrency}
-                  onChange={(e) => setInputCurrency(e.target.value as "JPY" | "THB")}
-                  className="px-2.5 py-1 bg-bg-base border border-border rounded-lg text-xs font-bold text-accent focus:outline-none focus:border-accent cursor-pointer"
-                >
-                  <option value="JPY">JPY (¥ เยน)</option>
-                  <option value="THB">THB (฿ บาท)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="relative">
-              <input
-                type="number"
-                value={amountValue}
-                onChange={(e) => setAmountValue(e.target.value)}
-                placeholder={inputCurrency === "JPY" ? "0 or e.g. 1500" : "0 or e.g. 360"}
-                className={`${inputClass} font-mono text-base font-bold`}
-              />
-            </div>
-
-            {/* Live Dual Currency Conversion Display */}
-            {numVal > 0 && (
-              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
-                <span className="text-text-muted flex items-center gap-1">
-                  <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{t("equivalentTo")}:</span>
-                </span>
-                <div className="font-mono font-bold text-right">
-                  <span className="text-accent">{formatJPY(jpyVal)}</span>
-                  <span className="text-text-faint mx-1.5">≈</span>
-                  <span className="text-text-primary">{formatTHB(thbVal)}</span>
-                </div>
-              </div>
-            )}
-
+          <CurrencyCostInput
+            label={t("currencyAndCost")}
+            amount={amountValue}
+            currency={inputCurrency}
+            exchangeRate={exchangeRate}
+            placeholder={inputCurrency === "JPY" ? "0 or e.g. 1500" : "0 or e.g. 360"}
+            onAmountChange={setAmountValue}
+            onCurrencyChange={setInputCurrency}
+          >
             {/* IC Card toggle */}
             <div className="pt-2 border-t border-border/60">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -614,7 +582,7 @@ export default function ActivityFormModal({
                 </span>
               </label>
             </div>
-          </div>
+          </CurrencyCostInput>
 
           {/* Transit Pass Selector */}
           <div>

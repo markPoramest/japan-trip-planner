@@ -79,11 +79,12 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Horizontal warm beige card (`bg-[#FAF3EA] dark:bg-bg-surface/50 border border-sand/30 dark:border-border rounded-3xl p-4 sm:p-5 shadow-xs`).
   - Left: Circular double-ring coin icon (`Coins`), plan cost title, bold font-mono JPY (`¥ 11,940`), and THB approx subtitle, with zero cramped elements.
   - Right: Two-row stacked sub-category breakdown in the same right column (`IC Card Spent` in green with `CreditCard`, percentage pill `50%`, and progress bar; `Cash & Credit Card` in orange with `Wallet`, percentage pill `50%`, and progress bar). Always visible with pure CSS/Tailwind + SVG icons without external image assets.
-- **Dual-Currency Pass Synchronization & Single-Row UI ([PassModal.tsx](./src/components/PassModal.tsx) & [PassCard.tsx](./src/components/PassCard.tsx))**:
-  - Price (amount input) and Currency selector (`JPY` / `THB`) sit on the same horizontal row with live dual-currency equivalence preview underneath (`Equivalent to: ¥ X ≈ ฿ Y`).
-  - Both `costJpy` and `costThb` are stored in sync using `exchangeRate` when creating or updating a pass.
-  - Toggling between `JPY` and `THB` in `PassModal` dynamically converts the input value.
-  - `PassCard.tsx` automatically protects against 1:1 legacy data (where `costThb === costJpy`) by deriving THB via `passJpy * rate`.
+- **Reusable Currency & Cost Input Component ([CurrencyCostInput.tsx](./src/components/CurrencyCostInput.tsx))**:
+  - Reusable unified UI component used across all modals: [HotelModal.tsx](./src/components/HotelModal.tsx), [FlightModal.tsx](./src/components/FlightModal.tsx), [PassModal.tsx](./src/components/PassModal.tsx), and [ActivityFormModal.tsx](./src/components/ActivityFormModal.tsx).
+  - Consistent layout: Top header row with label & currency selector dropdown (`THB` / `JPY`), full-width number input, live dual-currency preview (`Equivalent to: ¥ X ≈ ฿ Y`), and support for modal-specific extensions (like the IC Card checkbox).
+  - Toggling between `JPY` and `THB` dynamically recalculates the amount using `exchangeRate`.
+  - Both `costJpy` and `costThb` are stored in sync when creating/updating transit passes in `PassModal`.
+  - `PassCard.tsx` protects against 1:1 legacy data by deriving THB via `passJpy * rate`.
 
 
 

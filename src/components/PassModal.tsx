@@ -7,6 +7,7 @@ import { createPass, updatePass } from "@/lib/actions";
 import { X, Train, Ticket, Calendar, FileText, ArrowRightLeft, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
+import CurrencyCostInput from "@/components/CurrencyCostInput";
 
 interface PassBooking {
   id: string;
@@ -159,60 +160,17 @@ export default function PassModal({
             />
           </div>
 
-          {/* Price & Currency in the same row */}
-          <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-                <Ticket className="w-3.5 h-3.5 text-olive" />
-                <span>{t("passCostJpy")} / {t("currency")}</span>
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  value={amountValue}
-                  onChange={(e) => setAmountValue(e.target.value)}
-                  placeholder={inputCurrency === "JPY" ? "¥ 15,000" : "฿ 3,500"}
-                  className={`${inputClass} font-mono text-base font-bold`}
-                />
-              </div>
-
-              <select
-                value={inputCurrency}
-                onChange={(e) => {
-                  const newCurr = e.target.value as "JPY" | "THB";
-                  if (newCurr !== inputCurrency && numVal > 0) {
-                    if (newCurr === "THB") {
-                      setAmountValue(Math.round(numVal * exchangeRate).toString());
-                    } else {
-                      setAmountValue(exchangeRate > 0 ? Math.round(numVal / exchangeRate).toString() : numVal.toString());
-                    }
-                  }
-                  setInputCurrency(newCurr);
-                }}
-                className="w-32 sm:w-36 px-3 py-2.5 bg-bg-base border border-border rounded-xl text-xs sm:text-sm font-bold text-accent focus:outline-none focus:border-accent cursor-pointer shrink-0"
-              >
-                <option value="JPY">JPY (¥ เยน)</option>
-                <option value="THB">THB (฿ บาท)</option>
-              </select>
-            </div>
-
-            {numVal > 0 && (
-              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
-                <span className="text-text-muted flex items-center gap-1">
-                  <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{t("equivalentTo")}:</span>
-                </span>
-                <div className="font-mono font-bold text-right">
-                  <span className="text-accent">{formatJPY(jpyVal)}</span>
-                  <span className="text-text-faint mx-1.5">≈</span>
-                  <span className="text-text-primary">{formatTHB(thbVal)}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Price & Currency using shared CurrencyCostInput */}
+          <CurrencyCostInput
+            label={`${t("passCostJpy")} / ${t("currency")}`}
+            amount={amountValue}
+            currency={inputCurrency}
+            exchangeRate={exchangeRate}
+            icon={<Ticket className="w-3.5 h-3.5 text-olive" />}
+            placeholder={inputCurrency === "JPY" ? "¥ 15,000" : "฿ 3,500"}
+            onAmountChange={setAmountValue}
+            onCurrencyChange={setInputCurrency}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Validity Days */}

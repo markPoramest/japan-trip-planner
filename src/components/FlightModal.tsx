@@ -7,6 +7,7 @@ import { createFlight, updateFlight } from "@/lib/actions";
 import { X, Plane, FileText, Navigation, ArrowRightLeft, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatJPY, formatTHB } from "@/lib/utils";
+import CurrencyCostInput from "@/components/CurrencyCostInput";
 
 interface FlightBooking {
   id: string;
@@ -168,46 +169,15 @@ export default function FlightModal({
           </div>
 
           {/* Currency selection & Amount */}
-          <div className="p-3.5 bg-bg-surface border border-border rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                {t("currencyAndAirfare")}
-              </label>
-              <select
-                value={inputCurrency}
-                onChange={(e) => setInputCurrency(e.target.value as "THB" | "JPY")}
-                className="px-2.5 py-1 bg-bg-base border border-border rounded-lg text-xs font-bold text-accent focus:outline-none focus:border-accent cursor-pointer"
-              >
-                <option value="THB">THB (฿ บาท)</option>
-                <option value="JPY">JPY (¥ เยน)</option>
-              </select>
-            </div>
-
-            <div className="relative">
-              <input
-                type="number"
-                value={amountValue}
-                onChange={(e) => setAmountValue(e.target.value)}
-                placeholder={inputCurrency === "THB" ? "฿ 18,500" : "¥ 78,000"}
-                className={`${inputClass} font-mono text-base font-bold`}
-              />
-            </div>
-
-            {/* Live Dual Currency Conversion Display */}
-            {numVal > 0 && (
-              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs">
-                <span className="text-text-muted flex items-center gap-1">
-                  <ArrowRightLeft className="w-3 h-3 text-accent" />
-                  <span>{t("equivalentTo")}:</span>
-                </span>
-                <div className="font-mono font-bold text-right">
-                  <span className="text-accent">{formatTHB(thbVal)}</span>
-                  <span className="text-text-faint mx-1.5">≈</span>
-                  <span className="text-text-primary">{formatJPY(jpyVal)}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          <CurrencyCostInput
+            label={t("currencyAndAirfare")}
+            amount={amountValue}
+            currency={inputCurrency}
+            exchangeRate={exchangeRate}
+            placeholder={inputCurrency === "THB" ? "฿ 18,500" : "¥ 78,000"}
+            onAmountChange={setAmountValue}
+            onCurrencyChange={setInputCurrency}
+          />
 
           <div>
             <label className={labelClass}>
