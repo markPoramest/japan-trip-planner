@@ -37,8 +37,14 @@ export default async function BookingsPage({ params }: Props) {
     }
   }
 
-  if (!trip.isPublic && !isOwner) {
-    if (!userId) redirect(`/login?callbackUrl=/trips/${params.tripId}/bookings`);
+  // Split bill is strictly private to the trip owner and must NEVER be shared with the public.
+  if (!isOwner) {
+    if (trip.isPublic) {
+      redirect(`/trips/${params.tripId}`);
+    }
+    if (!userId) {
+      redirect(`/login?callbackUrl=/trips/${params.tripId}`);
+    }
     notFound();
   }
 
@@ -55,8 +61,6 @@ export default async function BookingsPage({ params }: Props) {
           id: isOwner ? trip.id : "",
         }}
         isOwner={isOwner}
-        totalIcSpendJpy={totalIcSpendJpy}
-        totalNonIcSpendJpy={totalNonIcSpendJpy}
       />
     </div>
   );

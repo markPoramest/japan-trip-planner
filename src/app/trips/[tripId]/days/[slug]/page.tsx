@@ -110,7 +110,7 @@ export default async function DayPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-base pb-16">
-      <Navbar tripId={params.tripId} currentSlug={day.slug} />
+      <Navbar tripId={params.tripId} currentSlug={day.slug} isOwner={!!isOwner} />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         {/* Back & Prev/Next */}

@@ -44,11 +44,13 @@ japan-trip/
 │   │   │   ├── new/          # Create new trip wizard
 │   │   │   └── [tripId]/     # Trip details
 │   │   │       ├── page.tsx  # Trip overview dashboard (TripOverviewClient, DayCard list)
-│   │   │       ├── bookings/ # Hotels, Passes, Flights, Budget Wallets (BookingsClient)
+│   │   │       ├── bookings/ # Split Bill calculator for travel group (BookingsClient)
 │   │   │       ├── summary/  # Cost breakdown & Excel matrix export (SummaryClient)
 │   │   │       ├── export/   # Print & PNG itinerary view (ExportItineraryView)
 │   │   │       └── days/[slug]/ # Detailed day itinerary & timeline (DayTimeline)
 │   ├── components/           # Reusable UI components
+│   │   ├── BookingsClient.tsx # Split Bill calculator & member management
+│   │   ├── CurrencyCostInput.tsx # Reusable single-row currency & amount input with live dual-currency preview
 │   │   ├── DayTimeline.tsx   # Day timeline, plan tabs (Main/Substitutes), unified "Manage Stops" button, optimistic plan swapping
 │   │   ├── DayCard.tsx       # Day overview card on trip dashboard
 │   │   ├── TripStats.tsx     # Financial summary cards (Col 1 Grand Total priority + Col 2 sub-category row)
@@ -68,8 +70,9 @@ japan-trip/
 │       ├── auth.ts           # NextAuth options & Prisma adapter
 │       ├── db.ts             # PrismaClient singleton instance
 │       ├── hotelDates.ts     # Hotel stay parser, nights calculator, EN/TH Buddhist year formatter
+│       ├── splitBill.ts      # Group split bill calculation engine
 │       ├── i18n.ts           # Central EN & TH translation dictionaries
-│       └── utils.ts          # Tailwind cn() helper
+│       └── utils.ts          # Tailwind cn() helper & currency formatters
 └── .agents/
     └── skills/
         └── japan-trip-planner/ # Antigravity skill with deep reference documentation
@@ -133,6 +136,11 @@ japan-trip/
 - **Dedicated Loading Skeleton**: [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) used in `src/app/trips/[tripId]/export/loading.tsx` to match the A4 sheet format during transitions.
 - **Activity Remarks & URLs**: If an activity remark contains a URL, it is rendered as a clickable link (`🔗 {remark}`) without stripping URLs.
 - **Print Margins & Browser URL**: Preserves natural page margins for clean multi-page printouts. Browser URL and page numbers are removed by unchecking "Headers and footers" in the browser print dialog (guidance tip displayed on floating toolbar).
+- **Day 1 on Page 1 & Page Breaks for Subsequent Days**:
+  - **Day 1 Starts on Page 1 After Trip Overview**: Compact print styling on the Trip Overview (flights, hotels, passes) frees up vertical space on Page 1, enabling Day 1 to start immediately beneath the section banner on Page 1 without forcing an awkward page break or leaving empty space. Day 1 uses `break-inside: auto` on its container to guarantee it is never kicked to Page 2.
+  - **Page Break for Every Subsequent Day (Day 2+)**: Configured `.print-day-card + .print-day-card` with `break-before: page; page-break-before: always; break-inside: avoid;`, ensuring Day 2, Day 3, Day 4, etc. each start on their own dedicated sheet.
+  - **Crisp Header Top Border**: Explicit `border-top: 2px solid #4b5563` on `thead tr`, `thead th`, and `table` (both in Tailwind and `@media print` CSS) guarantees the top border line above table column headers (`เวลา`, `สถานที่ / จุดหมาย`...) is permanently sharp, prominent, and never missing.
+  - **Protected Table Rows**: Individual activity rows maintain `break-inside: avoid` so text is never sliced across page breaks.
 
 ### G. Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx) & [TripOverviewClient.tsx](./src/components/TripOverviewClient.tsx))
 - **Two-Column 40% / 60% Single-Row Financial Structure**:
@@ -216,6 +224,20 @@ japan-trip/
     - **Row 1 (IC Card Spent)**: Green theme, `CreditCard` icon in `bg-emerald-500/10 text-emerald-600`, localized THB approx, percentage badge (`50%`), bold font-mono JPY (`¥ 5,940`), and horizontal gradient progress bar.
     - **Row 2 (Cash & Credit Card)**: Orange theme, `Wallet` icon in `bg-orange-500/10 text-orange-600`, localized THB approx, percentage badge (`50%`), bold font-mono JPY (`¥ 6,000`), and horizontal gradient progress bar.
   - Pure CSS/Tailwind + SVG Lucide icons without external image dependencies ("without image using").
+
+### N. Travel Group Split Bill Calculator ([BookingsClient.tsx](./src/components/BookingsClient.tsx) & [splitBill.ts](./src/lib/splitBill.ts))
+- **Dedicated Split Bill Engine**: Accessible at `/trips/[tripId]/bookings` for calculating shared travel costs.
+- **Privacy & Public Sharing Protection (Strict Invariant)**:
+  - Split Bill is strictly private to the trip owner/creator and is **NEVER** shared with the public or non-owner viewers.
+  - When a trip is shared publicly (`isPublic: true`), public/anonymous viewers and non-owners cannot access `/trips/[tripId]/bookings`; navigating directly there redirects them back to the public trip overview `/trips/[tripId]`.
+  - The Split Bill (`hotelsAndPasses`) and Cost Matrix (`summary`) navigation tabs are completely hidden from the top Navbar ([NavbarClient.tsx](./src/components/NavbarClient.tsx)) for non-owners (`isOwner: false`), leaving only the public itinerary overview and daily timeline tabs visible.
+- **Pre-Booked Cost Aggregation**: Automatically compiles pre-booked expenses (Hotels, Flights, and Transit Passes/Tickets) from trip data.
+- **Member Management (Default: 1 Member "Me")**: Defaults to 1 person (`Me`). Users can add travel companions with distinct color-coded avatar badges and quick-add preset suggestions. Persisted per trip via `localStorage`.
+- **Per-Item Split Toggles**: Not everything has to be split — users can toggle on/off individual expenses via switch buttons (`Split this item` / `Don't split`). Unchecked items are excluded completely from the group split calculation.
+- **Unified Single-Page Flow**: Section 1 (Select Items & Companions to Split) directly above Section 2 (Per-Person Share Summary) for a natural, intuitive top-to-bottom workflow without awkward tab switching.
+- **Flexible Splitting Models**:
+  - **Equal Split**: Automatically divides all pre-booked costs evenly among all members.
+  - **Itemized Custom Split**: Assigns specific members to individual bookings (e.g., 2 friends sharing a twin room, or individual transit passes) with instant live recalculation of per-person amounts in both THB and JPY.
 
 ---
 

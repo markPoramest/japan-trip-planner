@@ -40,6 +40,11 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Dedicated loading skeleton [ExportItinerarySkeleton.tsx](./src/components/skeletons/ExportItinerarySkeleton.tsx) at `src/app/trips/[tripId]/export/loading.tsx`.
   - Remarks with URLs render clickable links (`🔗 {remark}`) without stripping.
   - Print margins are preserved for natural multi-page spacing; browser URLs are removed by unchecking "Headers and footers" in the print dialog.
+  - **Day 1 on Page 1 & Page Breaks for Subsequent Days**:
+    - **Day 1 Starts on Page 1 After Trip Overview**: Compact print styling on the Trip Overview (flights, hotels, passes) frees up vertical space on Page 1, enabling Day 1 to start immediately beneath the section banner on Page 1 without forcing an awkward page break or leaving empty space. Day 1 uses `break-inside: auto` on its container to guarantee it is never kicked to Page 2.
+    - **Page Break for Every Subsequent Day (Day 2+)**: Configured `.print-day-card + .print-day-card` with `break-before: page; page-break-before: always; break-inside: avoid;`, ensuring Day 2, Day 3, Day 4, etc. each start on their own dedicated sheet.
+    - **Crisp Header Top Border**: Explicit `border-top: 2px solid #4b5563` on `thead tr`, `thead th`, and `table` (both in Tailwind and `@media print` CSS) guarantees the top border line above table column headers (`เวลา`, `สถานที่ / จุดหมาย`...) is permanently sharp, prominent, and never missing.
+    - **Protected Table Rows**: Individual activity rows maintain `break-inside: avoid` so text is never sliced across page breaks.
 - **Financial Summary & Overview Stats Layout ([TripStats.tsx](./src/components/TripStats.tsx) & [TripOverviewClient.tsx](./src/components/TripOverviewClient.tsx))**:
   - Two-column 40% / 60% single-row layout: Grand Total Estimated card occupies 40% on the left (`lg:w-2/5`) with warm peach styling, wallet badge, subtitle, and fully visible 6-bar vertical sparkline chart.
   - Sub-categories (Flights, Hotels, Passes, Everyday) placed on the same single row taking 60% on the right (`lg:w-3/5`, `grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2`), each featuring category icons, dual-currency amounts, spend progress bar, and percentage pill (`%` of `totalTripEstimatedThb`).
@@ -86,7 +91,17 @@ Whenever you fix bugs, refactor code, modify components, alter database schemas,
   - Consistent layout: Top header row with label & currency selector dropdown (`THB` / `JPY`), full-width number input, live dual-currency preview (`Equivalent to: ¥ X ≈ ฿ Y`), and support for modal-specific extensions (like the IC Card checkbox).
   - Toggling between `JPY` and `THB` dynamically recalculates the amount using `exchangeRate`.
   - Both `costJpy` and `costThb` are stored in sync when creating/updating transit passes in `PassModal`.
-  - `PassCard.tsx` protects against 1:1 legacy data by deriving THB via `passJpy * rate`.
+- **Travel Group Split Bill Calculator ([BookingsClient.tsx](./src/components/BookingsClient.tsx) & [splitBill.ts](./src/lib/splitBill.ts))**:
+  - Replaced redundant Cost Management view with a dedicated Split Bill engine for travel groups at `/trips/[tripId]/bookings`.
+  - **Strict Privacy Invariant**: Split bill is strictly private to the trip owner and is **NEVER shared with the public**.
+  - When a trip is shared via public link (`isPublic: true`), public/anonymous viewers and non-owners cannot access `/trips/[tripId]/bookings`; navigating directly there redirects them back to the public trip overview `/trips/[tripId]`.
+  - The Split Bill (`hotelsAndPasses`) and Cost Matrix (`summary`) navigation tabs in [NavbarClient.tsx](./src/components/NavbarClient.tsx) are completely hidden for non-owners (`isOwner: false`), showing only the public overview and daily itinerary schedule.
+  - Automatically compiles pre-booked expenses (Hotels, Flights, and Transit Passes/Tickets) from trip data.
+  - Defaults to 1 member (`Me`). Users can add/remove companions with color-coded avatar badges and quick-add preset suggestions.
+  - Supports choosing only specific items to split via interactive toggle switches; unselected items are completely excluded from the bill split.
+  - Unified linear flow: Section 1 (Select Items & Companions to Split) on top, followed immediately by Section 2 (Per-Person Share Summary) with live recalculation in THB and JPY (no awkward tabs).
+
+
 
 
 

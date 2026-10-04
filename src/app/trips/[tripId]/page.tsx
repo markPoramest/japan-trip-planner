@@ -91,7 +91,7 @@ export default async function TripOverviewPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-base pb-16">
-      <Navbar tripId={trip.id} currentSection="overview" />
+      <Navbar tripId={trip.id} currentSection="overview" isOwner={!!isOwner} />
       <TripOverviewClient trip={tripData} isOwner={!!isOwner} />
     </div>
   );

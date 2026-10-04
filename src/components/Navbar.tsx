@@ -1,13 +1,15 @@
 import { db } from "@/lib/db";
+import { getAuthSession } from "@/lib/auth";
 import NavbarClient from "./NavbarClient";
 
 interface NavbarProps {
   tripId: string;
   currentSlug?: string;
   currentSection?: "overview" | "bookings" | "summary";
+  isOwner?: boolean;
 }
 
-export default async function Navbar({ tripId, currentSlug, currentSection }: NavbarProps) {
+export default async function Navbar({ tripId, currentSlug, currentSection, isOwner }: NavbarProps) {
   const trip = await db.trip.findUnique({
     where: { id: tripId },
     include: {
@@ -16,6 +18,13 @@ export default async function Navbar({ tripId, currentSlug, currentSection }: Na
   });
 
   if (!trip) return null;
+
+  let resolvedIsOwner = isOwner;
+  if (resolvedIsOwner === undefined) {
+    const session = await getAuthSession();
+    const userId = (session?.user as any)?.id;
+    resolvedIsOwner = !!(userId && (!trip.userId || trip.userId === userId));
+  }
 
   return (
     <NavbarClient
@@ -31,6 +40,7 @@ export default async function Navbar({ tripId, currentSlug, currentSection }: Na
       }))}
       currentSlug={currentSlug}
       currentSection={currentSection}
+      isOwner={resolvedIsOwner}
     />
   );
 }

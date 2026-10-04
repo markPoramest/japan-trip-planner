@@ -55,7 +55,7 @@ export default async function SummaryPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-base pb-16">
-      <Navbar tripId={trip.id} currentSection="summary" />
+      <Navbar tripId={trip.id} currentSection="summary" isOwner={true} />
       <SummaryClient
         trip={trip}
         dayRows={dayRows}

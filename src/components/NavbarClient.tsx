@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import { Compass, Calendar, Building2, Layers, ArrowLeft, Printer, ChevronLeft, ChevronRight } from "lucide-react";
+import { Compass, Calendar, Building2, Layers, ArrowLeft, Printer, ChevronLeft, ChevronRight, Users2 } from "lucide-react";
 import SettingsKebab from "@/components/SettingsKebab";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -19,6 +19,7 @@ interface NavbarClientProps {
   }[];
   currentSlug?: string;
   currentSection?: "overview" | "bookings" | "summary" | "export";
+  isOwner?: boolean;
 }
 
 export default function NavbarClient({
@@ -29,6 +30,7 @@ export default function NavbarClient({
   days,
   currentSlug,
   currentSection,
+  isOwner = true,
 }: NavbarClientProps) {
   const { t, language } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,18 +51,22 @@ export default function NavbarClient({
       icon: Compass,
       section: "overview" as const,
     },
-    {
-      href: `/trips/${tripId}/bookings`,
-      label: t("hotelsAndPasses"),
-      icon: Building2,
-      section: "bookings" as const,
-    },
-    {
-      href: `/trips/${tripId}/summary`,
-      label: t("excelMatrix"),
-      icon: Layers,
-      section: "summary" as const,
-    },
+    ...(isOwner
+      ? [
+          {
+            href: `/trips/${tripId}/bookings`,
+            label: t("hotelsAndPasses"),
+            icon: Users2,
+            section: "bookings" as const,
+          },
+          {
+            href: `/trips/${tripId}/summary`,
+            label: t("excelMatrix"),
+            icon: Layers,
+            section: "summary" as const,
+          },
+        ]
+      : []),
   ];
 
   const dateLocale = language === "th" ? "th-TH" : "en-GB";
