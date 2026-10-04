@@ -6,8 +6,9 @@
 Whenever you fix bugs, refactor code, modify components, alter database schemas, add new server actions, or make any code changes:
 1. **You MUST update [AGENTS.md](./AGENTS.md) and [GEMINI.md](./GEMINI.md)** in the same turn to reflect any changes in components, server actions, data schema, routes, or behavior.
 2. If the change impacts deep subsystems (e.g., substitute plans, hotel dates, i18n, export, or server actions), **you MUST also update the corresponding file in [.agents/skills/japan-trip-planner/references/](./.agents/skills/japan-trip-planner/references/)**.
-3. NEVER finish a task after modifying code without verifying that the documentation markdown files are updated and in sync with the codebase.
-4. **Portability Rule**: ALWAYS use relative paths (e.g., `./src/...` or `../../...`) in documentation so links remain valid across different PCs, operating systems, and environments. Never hardcode machine-specific absolute paths.
+3. **MANDATORY UNIT TESTING**: Every time code is changed or a new function/component is added, **you MUST add or update corresponding unit tests and verify by running `node node_modules/vitest/vitest.mjs run`**. Never complete a turn with failing tests.
+4. NEVER finish a task after modifying code without verifying that the documentation markdown files are updated and in sync with the codebase.
+5. **Portability Rule**: ALWAYS use relative paths (e.g., `./src/...` or `../../...`) in documentation so links remain valid across different PCs, operating systems, and environments. Never hardcode machine-specific absolute paths.
 
 ## Essential Constraints & Rules
 - **PowerShell Execution**: Script execution is disabled on this system.
